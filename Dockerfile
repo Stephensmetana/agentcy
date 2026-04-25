@@ -12,6 +12,6 @@ COPY . .
 # Create persistent directories
 RUN mkdir -p databases chat_logs
 
-EXPOSE 8000
+EXPOSE 9001
 
-CMD ["python", "main.py", "ui", "databases/agentcy.db", "roles.json", "8000"]
+CMD ["python", "main.py", "ui", "databases/agentcy.db", "roles.json", "9001"]

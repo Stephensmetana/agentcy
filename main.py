@@ -11,7 +11,7 @@ import threading
 
 DEFAULT_DB    = "databases/agentcy.db"
 DEFAULT_ROLES = "roles.json"
-DEFAULT_PORT  = 8000
+DEFAULT_PORT  = 9001
 
 
 def run_ui(db: str, roles: str, port: int) -> None:

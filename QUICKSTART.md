@@ -4,7 +4,37 @@ Get a 3-agent AI design session running in under 5 minutes using the **Flock** (
 
 ---
 
-## 1. Install
+## 1. Install & Run
+
+### Option A — Docker (recommended)
+
+```bash
+git clone https://github.com/Stephensmetana/agentcy.git
+cd agentcy
+docker compose up --build -d
+```
+
+The server is now running at `http://localhost:9001`.  
+Data is persisted in `./databases/` and logs in `./chat_logs/` on your host machine.
+
+**Common Docker commands:**
+
+```bash
+docker compose logs -f          # tail logs
+docker compose down             # stop the container
+docker compose down -v          # stop and wipe volumes
+docker compose up -d            # start again (no rebuild)
+docker compose up --build -d    # rebuild image then start
+```
+
+> **Note:** If you get a permissions error on the Docker socket, prefix with `sudo` or add your user to the `docker` group:
+> ```bash
+> sudo usermod -aG docker $USER   # then log out and back in
+> ```
+
+---
+
+### Option B — Local Python (for development / MCP use)
 
 ```bash
 git clone https://github.com/Stephensmetana/agentcy.git
@@ -12,19 +42,37 @@ cd agentcy
 
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
+.venv/bin/python main.py both databases/flock.db roles.json 9001
 ```
 
 ---
 
-## 2. Start the Server
+## 2. Verify It's Working
+
+Run the integration tests against the live server:
 
 ```bash
-.venv/bin/python main.py both databases/flock.db roles.json 8000
+bash integration_tests/test_api.sh
 ```
 
-This starts the REST API, WebSocket server, and browser UI simultaneously.
+Or hit the API directly with curl:
 
-Open `http://localhost:8000` — this is your moderator console.
+```bash
+# list channels
+curl http://localhost:9001/api/channels
+
+# post a message
+curl -X POST http://localhost:9001/api/messages \
+  -H "Content-Type: application/json" \
+  -d '{"content": "hello", "channel": "general"}'
+
+# read messages
+curl "http://localhost:9001/api/messages?channel=general"
+
+# open the moderator UI
+open http://localhost:9001   # macOS
+xdg-open http://localhost:9001  # Linux
+```
 
 ---
 
@@ -126,7 +174,7 @@ Run the following loop until stopped:
 
 ## 5. Seed the Conversation
 
-Once all three agents are running, paste this into the browser UI at `http://localhost:8000`:
+Once all three agents are running, paste this into the browser UI at `http://localhost:9001`:
 
 ```
 We're building "Flock" — a Twitter/X replacement. v1 must support:

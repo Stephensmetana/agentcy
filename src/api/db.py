@@ -13,12 +13,19 @@ from typing import Optional
 
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS channels (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT    NOT NULL UNIQUE,
+    created_at TEXT    NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS messages (
-    id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp TEXT    NOT NULL,
-    sender    TEXT    NOT NULL,
-    role      TEXT,
-    content   TEXT    NOT NULL
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp  TEXT    NOT NULL,
+    sender     TEXT    NOT NULL,
+    role       TEXT,
+    content    TEXT    NOT NULL,
+    channel    TEXT    NOT NULL DEFAULT 'general'
 );
 
 CREATE TABLE IF NOT EXISTS agents (
@@ -52,9 +59,18 @@ class ChatDB:
         with self._connect() as conn:
             conn.executescript(SCHEMA)
             # Migration: add character_description column to pre-existing databases
-            cols = {row[1] for row in conn.execute("PRAGMA table_info(agents)").fetchall()}
-            if "character_description" not in cols:
+            agent_cols = {row[1] for row in conn.execute("PRAGMA table_info(agents)").fetchall()}
+            if "character_description" not in agent_cols:
                 conn.execute("ALTER TABLE agents ADD COLUMN character_description TEXT")
+            # Migration: add channel column to pre-existing databases
+            msg_cols = {row[1] for row in conn.execute("PRAGMA table_info(messages)").fetchall()}
+            if "channel" not in msg_cols:
+                conn.execute("ALTER TABLE messages ADD COLUMN channel TEXT NOT NULL DEFAULT 'general'")
+            # Seed the default channel
+            conn.execute(
+                "INSERT OR IGNORE INTO channels (name, created_at) VALUES ('general', ?)",
+                (self._now(),),
+            )
 
     @staticmethod
     def _now() -> str:
@@ -64,13 +80,19 @@ class ChatDB:
     # Message operations
     # ------------------------------------------------------------------
 
-    def insert_message(self, sender: str, content: str, role: Optional[str] = None) -> dict:
+    def insert_message(
+        self,
+        sender: str,
+        content: str,
+        role: Optional[str] = None,
+        channel: str = "general",
+    ) -> dict:
         """Append a message. Returns the saved row as a dict."""
         ts = self._now()
         with self._connect() as conn:
             cur = conn.execute(
-                "INSERT INTO messages (timestamp, sender, role, content) VALUES (?, ?, ?, ?)",
-                (ts, sender, role, content),
+                "INSERT INTO messages (timestamp, sender, role, content, channel) VALUES (?, ?, ?, ?, ?)",
+                (ts, sender, role, content, channel),
             )
             return {
                 "id": cur.lastrowid,
@@ -78,34 +100,81 @@ class ChatDB:
                 "sender": sender,
                 "role": role,
                 "content": content,
+                "channel": channel,
             }
 
-    def get_all_messages(self) -> list[dict]:
-        """Return every message in insertion order."""
+    def get_all_messages(self, channel: str = "general") -> list[dict]:
+        """Return every message in a channel, in insertion order."""
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT id, timestamp, sender, role, content FROM messages ORDER BY id"
+                "SELECT id, timestamp, sender, role, content, channel FROM messages "
+                "WHERE channel = ? ORDER BY id",
+                (channel,),
             ).fetchall()
             return [dict(r) for r in rows]
 
-    def get_latest_message(self) -> Optional[dict]:
-        """Return the most recent message, or None if chat is empty."""
+    def get_latest_message(self, channel: str = "general") -> Optional[dict]:
+        """Return the most recent message in a channel, or None if empty."""
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT id, timestamp, sender, role, content "
-                "FROM messages ORDER BY id DESC LIMIT 1"
+                "SELECT id, timestamp, sender, role, content, channel "
+                "FROM messages WHERE channel = ? ORDER BY id DESC LIMIT 1",
+                (channel,),
             ).fetchone()
             return dict(row) if row else None
 
-    def get_messages_since(self, message_id: int) -> list[dict]:
-        """Return all messages with id > message_id."""
+    def get_messages_since(self, message_id: int, channel: str = "general") -> list[dict]:
+        """Return all messages with id > message_id in a channel."""
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT id, timestamp, sender, role, content "
-                "FROM messages WHERE id > ? ORDER BY id",
-                (message_id,),
+                "SELECT id, timestamp, sender, role, content, channel "
+                "FROM messages WHERE id > ? AND channel = ? ORDER BY id",
+                (message_id, channel),
             ).fetchall()
             return [dict(r) for r in rows]
+
+    # ------------------------------------------------------------------
+    # Channel operations
+    # ------------------------------------------------------------------
+
+    def get_all_channels(self) -> list[dict]:
+        """Return all channels ordered by id."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT id, name, created_at FROM channels ORDER BY id"
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def create_channel(self, name: str) -> dict:
+        """Create a new channel. Raises ValueError if name already exists."""
+        ts = self._now()
+        try:
+            with self._connect() as conn:
+                cur = conn.execute(
+                    "INSERT INTO channels (name, created_at) VALUES (?, ?)",
+                    (name, ts),
+                )
+                return {"id": cur.lastrowid, "name": name, "created_at": ts}
+        except sqlite3.IntegrityError:
+            raise ValueError(f"Channel {name!r} already exists")
+
+    def get_channel_by_id(self, channel_id: int) -> Optional[dict]:
+        """Return a channel by its numeric id, or None."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT id, name, created_at FROM channels WHERE id = ?",
+                (channel_id,),
+            ).fetchone()
+            return dict(row) if row else None
+
+    def get_channel_by_name(self, name: str) -> Optional[dict]:
+        """Return a channel by name, or None."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT id, name, created_at FROM channels WHERE name = ?",
+                (name,),
+            ).fetchone()
+            return dict(row) if row else None
 
     # ------------------------------------------------------------------
     # Agent operations

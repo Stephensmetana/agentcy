@@ -24,7 +24,7 @@ flowchart TD
         Copilot["GitHub Copilot\n(MCP Client)"]
     end
 
-    subgraph server["Our Server  —  localhost:8000"]
+    subgraph server["Our Server  —  localhost:9001"]
         MCP["src/mcp/server.py\nMCP Bridge"]
         API["src/api/server.py\nREST API (FastAPI)"]
         Core["src/api/\nchat · db · roles"]
@@ -132,38 +132,43 @@ agentcy/
 ```bash
 git clone <repo-url>
 cd agentcy
-
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+docker compose up --build -d
 ```
 
-### Run Tests
+The REST API and browser UI start together at `http://localhost:9001`. The `databases/` and `chat_logs/` directories are mounted as volumes so data persists between container restarts.
+
+**Common Docker commands:**
 
 ```bash
+docker compose logs -f          # tail logs
+docker compose down             # stop the container
+docker compose up -d            # start again (no rebuild)
+docker compose up --build -d    # rebuild image then start
+```
+
+### Run Tests (local dev)
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 .venv/bin/pytest tests/ -v
 ```
 
-### Docker
-
-```bash
-docker compose up
-```
-
-The REST API and browser UI start together at `http://localhost:8000`. The `databases/` and `chat_logs/` directories are mounted as volumes so data persists between container restarts.
-
 ---
 
-## Running the Server
+## Running the Server (local dev / MCP)
+
+Docker is the recommended way to run the UI. For local development or to use the MCP stdio bridge with VS Code Copilot, run directly:
 
 ```bash
-# REST API + Browser UI  (http://localhost:8000)
-.venv/bin/python main.py ui databases/agentcy.db roles.json 8000
+# REST API + Browser UI  (http://localhost:9001)
+.venv/bin/python main.py ui databases/agentcy.db roles.json 9001
 
 # MCP stdio server only  (for VS Code Copilot)
 .venv/bin/python main.py mcp databases/agentcy.db roles.json
 
 # Both simultaneously    (UI in background thread, MCP on stdio)
-.venv/bin/python main.py both databases/agentcy.db roles.json 8000
+.venv/bin/python main.py both databases/agentcy.db roles.json 9001
 ```
 
 ### Choosing a Database Strategy
@@ -172,9 +177,9 @@ The database path is just a CLI argument — there is no configuration file to c
 
 **One database per project**
 ```bash
-.venv/bin/python main.py both databases/flock.db      roles.json 8000
-.venv/bin/python main.py both databases/api-redesign.db roles.json 8000
-.venv/bin/python main.py both databases/novel-chapter3.db roles.json 8000
+.venv/bin/python main.py both databases/flock.db      roles.json 9001
+.venv/bin/python main.py both databases/api-redesign.db roles.json 9001
+.venv/bin/python main.py both databases/novel-chapter3.db roles.json 9001
 ```
 
 | Pros | Cons |
@@ -186,7 +191,7 @@ The database path is just a CLI argument — there is no configuration file to c
 
 **One universal database for everything**
 ```bash
-.venv/bin/python main.py both databases/agentcy.db roles.json 8000
+.venv/bin/python main.py both databases/agentcy.db roles.json 9001
 ```
 
 | Pros | Cons |
@@ -333,7 +338,7 @@ Run the following loop until stopped:
 6. Wait 30 seconds, then go to step 1
 ```
 
-Start the conversation from the browser UI at `http://localhost:8000`:
+Start the conversation from the browser UI at `http://localhost:9001`:
 ```
 Let's design a REST API for a task management system. Users need to create tasks,
 assign them to team members, set due dates, and track completion. What should the
@@ -466,10 +471,10 @@ Open three VS Code windows (or three separate Copilot **Agent Mode** chat tabs).
 **Start the server:**
 
 ```bash
-.venv/bin/python main.py both databases/flock.db roles.json 8000
+.venv/bin/python main.py both databases/flock.db roles.json 9001
 ```
 
-Open `http://localhost:8000` in your browser — this is your moderator console for seeding and steering the conversation.
+Open `http://localhost:9001` in your browser — this is your moderator console for seeding and steering the conversation.
 
 ---
 
@@ -534,7 +539,7 @@ Run the following loop until stopped:
 
 ---
 
-**Seed the conversation from the browser UI at `http://localhost:8000`:**
+**Seed the conversation from the browser UI at `http://localhost:9001`:**
 
 ```
 We're building "Flock" — a Twitter/X replacement. v1 must support:
