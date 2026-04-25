@@ -1,0 +1,37 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Database files — never commit user data
+*.db
+*.db-shm
+*.db-wal
+databases/
+
+# Exported chat logs — generated output, not source
+chat_logs/
+chat_export.md
+
+# Environment / secrets
+.env
+.env.*
+
+# VS Code / MCP — contains absolute local paths, not portable
+.mcp.json
+.vscode/
+
+# macOS
+.DS_Store
+
+# Docker
+*.env.docker
+
+# Keep directory structure
+!databases/.gitkeep
+!chat_logs/.gitkeep

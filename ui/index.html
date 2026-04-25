@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Chatroom</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+    --user: #3fb950; --system: #8b949e;
+  }
+  body { background: var(--bg); color: var(--text); font: 14px/1.6 'Segoe UI', system-ui, sans-serif;
+         height: 100vh; display: flex; flex-direction: column; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border);
+           padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+  header h1 { font-size: 16px; font-weight: 600; color: var(--accent); }
+  #status-dot { width: 8px; height: 8px; border-radius: 50%; background: #56d364; flex-shrink: 0; }
+  #status-dot.offline { background: #f85149; }
+  #agent-list { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+  .agent-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px;
+                 border: 1px solid var(--border); color: var(--muted); }
+
+  #chat { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; }
+
+  .msg { display: flex; gap: 10px; padding: 4px 6px; border-radius: 6px; }
+  .msg:hover { background: rgba(255,255,255,.03); }
+  .msg-meta { flex-shrink: 0; width: 140px; text-align: right; }
+  .msg-sender { font-weight: 600; font-size: 12px; }
+  .msg-time { color: var(--muted); font-size: 11px; }
+  .msg-body { flex: 1; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+
+  /* Role colours */
+  .role-user      .msg-sender { color: var(--user); }
+  .role-system    .msg-sender { color: var(--system); font-style: italic; }
+  .role-designer  .msg-sender { color: #d2a8ff; }
+  .role-developer .msg-sender { color: #79c0ff; }
+  .role-qa        .msg-sender { color: #ffa657; }
+  .role-author    .msg-sender { color: #ff7b72; }
+  .role-editor    .msg-sender { color: #f0883e; }
+  .role-enhancer  .msg-sender { color: #a5d6ff; }
+  .role-narrator  .msg-sender { color: #ffa657; }
+  .role-character .msg-sender { color: #79c0ff; }
+  .role-ideator   .msg-sender { color: #56d364; }
+  .role-skeptic   .msg-sender { color: #ff7b72; }
+  .role-synthesizer .msg-sender { color: #d2a8ff; }
+
+  #compose { background: var(--surface); border-top: 1px solid var(--border);
+             padding: 12px 20px; display: flex; gap: 10px; flex-shrink: 0; }
+  #compose textarea { flex: 1; background: var(--bg); border: 1px solid var(--border);
+                      border-radius: 8px; color: var(--text); padding: 8px 12px;
+                      font: inherit; resize: none; height: 40px; outline: none; }
+  #compose textarea:focus { border-color: var(--accent); }
+  #compose button { background: var(--accent); color: #0d1117; border: none; border-radius: 8px;
+                    padding: 0 18px; font-weight: 600; cursor: pointer; font-size: 13px; }
+  #compose button:hover { opacity: .85; }
+
+  #empty { color: var(--muted); text-align: center; margin: auto; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <div id="status-dot"></div>
+  <h1>AI Chatroom</h1>
+  <span id="msg-count" style="color:var(--muted);font-size:12px"></span>
+  <div id="agent-list"></div>
+</header>
+
+<div id="chat"><div id="empty">No messages yet</div></div>
+
+<div id="compose">
+  <textarea id="input" placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
+            rows="1"></textarea>
+  <button id="send-btn">Send</button>
+</div>
+
+<script>
+  const chat      = document.getElementById('chat');
+  const empty     = document.getElementById('empty');
+  const input     = document.getElementById('input');
+  const sendBtn   = document.getElementById('send-btn');
+  const dot       = document.getElementById('status-dot');
+  const agentList = document.getElementById('agent-list');
+  const msgCount  = document.getElementById('msg-count');
+
+  let lastId = 0;
+
+  function formatTime(iso) {
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function roleClass(role) {
+    return role ? `role-${role}` : 'role-user';
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function appendMessage(m) {
+    empty.style.display = 'none';
+    const div = document.createElement('div');
+    div.className = `msg ${roleClass(m.role)}`;
+    div.dataset.id = m.id;
+    div.innerHTML = `
+      <div class="msg-meta">
+        <div class="msg-sender">${escHtml(m.sender)}</div>
+        <div class="msg-time">${formatTime(m.timestamp)}</div>
+      </div>
+      <div class="msg-body">${escHtml(m.content)}</div>`;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    if (m.id > lastId) lastId = m.id;
+  }
+
+  function setOnline(v) {
+    dot.className = v ? '' : 'offline';
+    dot.title = v ? 'Server online' : 'Server offline — showing last known data';
+  }
+
+  async function fetchMessages() {
+    try {
+      const url = lastId === 0 ? '/api/messages' : `/api/messages/since/${lastId}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(res.status);
+      const msgs = await res.json();
+      msgs.forEach(appendMessage);
+      msgCount.textContent = `${document.querySelectorAll('.msg').length} messages`;
+      setOnline(true);
+    } catch {
+      setOnline(false);
+    }
+  }
+
+  async function fetchAgents() {
+    try {
+      const res = await fetch('/api/agents');
+      if (!res.ok) return;
+      const agents = await res.json();
+      agentList.innerHTML = agents.map(a =>
+        `<span class="agent-badge ${roleClass(a.role)}">${escHtml(a.name)} (${escHtml(a.role)})</span>`
+      ).join('');
+    } catch {}
+  }
+
+  async function sendMessage() {
+    const content = input.value.trim();
+    if (!content) return;
+    input.value = '';
+    input.style.height = '40px';
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+      if (res.ok) {
+        const msg = await res.json();
+        appendMessage(msg);
+        msgCount.textContent = `${document.querySelectorAll('.msg').length} messages`;
+      }
+    } catch {
+      setOnline(false);
+    }
+  }
+
+  input.addEventListener('input', () => {
+    input.style.height = '40px';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+
+  sendBtn.addEventListener('click', sendMessage);
+
+  fetchMessages();
+  fetchAgents();
+  setInterval(fetchMessages, 2000);
+  setInterval(fetchAgents, 10000);
+</script>
+</body>
+</html>

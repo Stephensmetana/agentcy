@@ -1,0 +1,10 @@
+services:
+  agentcy:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist the database and exports between container restarts
+      - ./databases:/app/databases
+      - ./chat_logs:/app/chat_logs
+    restart: unless-stopped
