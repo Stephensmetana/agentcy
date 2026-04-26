@@ -39,15 +39,15 @@ get()  { curl -sf "${BASE_URL}${1}"; }
 post() { curl -sf -X POST "${BASE_URL}${1}" -H "Content-Type: application/json" -d "${2}"; }
 
 assert_contains() {
-  if echo "$1" | grep -q "$2"; then
+  if grep -qF "$2" <<< "$1"; then
     pass "$3"
   else
-    fail "$3 (expected '$2' in: $(echo "$1" | head -c 120))"
+    fail "$3 (expected '$2' in: $(head -c 120 <<< "$1"))"
   fi
 }
 
 assert_not_contains() {
-  if ! echo "$1" | grep -q "$2"; then
+  if ! grep -qF "$2" <<< "$1"; then
     pass "$3"
   else
     fail "$3 (did NOT expect '$2' in response)"

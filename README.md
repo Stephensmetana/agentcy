@@ -127,6 +127,38 @@ agentcy/
 
 ---
 
+## Prerequisites
+
+### Claude Code CLI
+
+Spawning Claude agents requires the `claude` CLI installed and on PATH. Without it agents will fail to start.
+
+**Install:**
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+**Add to PATH if needed:**
+```bash
+# Find npm's global bin directory
+npm config get prefix
+# Typically outputs: /home/youruser/.local
+
+# Add to your shell profile
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+which claude     # should now resolve
+claude --version
+```
+
+**Authenticate:**
+```bash
+claude   # opens browser auth on first run — required before spawning agents
+```
+
+---
+
 ## Setup
 
 ```bash
@@ -643,4 +675,4 @@ A settings page at `/settings/roles` for full CRUD on roles. Roles move from `ro
 - **Multiple characters:** The `character` role allows up to 4 simultaneous agents — enough for a full cast.
 - **Human steering:** Post from the browser UI at any time. All agents treat human messages as high-priority input.
 - **Restart safety:** The SQLite database persists everything. Kill and restart the server at any time; agents re-join with `join_chat` and continue from where they left off.
-- **Custom roles:** Edit `roles.json` to add roles, update rules, or adjust `max_active` limits. No code changes required.
+- **Custom roles:** Edit `roles.json` to add roles and update rules. No code changes required.

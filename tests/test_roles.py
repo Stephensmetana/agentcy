@@ -28,27 +28,23 @@ class TestAssignRole:
         role = assign_role(roles, active_agents=[])
         assert role["name"] in [r["name"] for r in roles]
 
-    def test_respects_max_active(self, roles):
-        # designer has max_active=1; fill its slot
-        active = [{"role": "designer"}]
-        role = assign_role(roles, active_agents=active)
-        assert role["name"] != "designer"
-
     def test_preferred_role_honoured(self, roles):
         role = assign_role(roles, active_agents=[], preferred="qa")
         assert role["name"] == "qa"
 
-    def test_preferred_not_honoured_when_full(self, roles):
-        # qa has max_active=1, already taken
+    def test_preferred_role_honoured_even_when_occupied(self, roles):
+        # Preferred role is always granted — no cap enforcement
         active = [{"role": "qa"}]
         role = assign_role(roles, active_agents=active, preferred="qa")
-        assert role["name"] != "qa"
+        assert role["name"] == "qa"
 
-    def test_picks_least_populated(self, roles):
-        # Fill developer slots (max_active=2)
-        active = [{"role": "developer"}, {"role": "developer"}]
+    def test_picks_least_populated_without_preference(self, roles):
+        # With no preference, assign_role picks the role with fewest active agents
+        active = [{"role": r["name"]} for r in roles]  # one agent in every role
+        # Add extra agents to all roles except designer
+        active += [{"role": r["name"]} for r in roles if r["name"] != "designer"]
         role = assign_role(roles, active_agents=active)
-        assert role["name"] != "developer"
+        assert role["name"] == "designer"
 
 
 class TestBuildSystemHeader:

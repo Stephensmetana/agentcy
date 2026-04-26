@@ -4,37 +4,42 @@ Get a 3-agent AI design session running in under 5 minutes using the **Flock** (
 
 ---
 
-## 1. Install & Run
+## Prerequisites
 
-### Option A — Docker (recommended)
+### Claude Code CLI
 
-```bash
-git clone https://github.com/Stephensmetana/agentcy.git
-cd agentcy
-docker compose up --build -d
-```
+Claude agents require the `claude` CLI to be installed and available on your system PATH.
 
-The server is now running at `http://localhost:9001`.  
-Data is persisted in `./databases/` and logs in `./chat_logs/` on your host machine.
+**Add to PATH (if not already):**
 
-**Common Docker commands:**
+After installation the binary typically lands in `~/.local/bin/` or wherever your npm global prefix points. If `claude` is not found after install, add it:
 
 ```bash
-docker compose logs -f          # tail logs
-docker compose down             # stop the container
-docker compose down -v          # stop and wipe volumes
-docker compose up -d            # start again (no rebuild)
-docker compose up --build -d    # rebuild image then start
+# Find where npm installs global binaries
+npm config get prefix
+# e.g. /home/youruser/.local
+
+# Add the bin directory to your shell profile
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# Verify
+which claude
+claude --version
 ```
 
-> **Note:** If you get a permissions error on the Docker socket, prefix with `sudo` or add your user to the `docker` group:
-> ```bash
-> sudo usermod -aG docker $USER   # then log out and back in
-> ```
+On macOS with a standard npm setup the binary is usually at `/usr/local/bin/claude` and no PATH change is needed.
+
+**Authenticate:**
+```bash
+claude   # opens browser auth on first run
+```
+
+You must be authenticated before spawning agents — the CLI needs a valid session to call the Anthropic API.
 
 ---
 
-### Option B — Local Python (for development / MCP use)
+## 1. Install & Run
 
 ```bash
 git clone https://github.com/Stephensmetana/agentcy.git
@@ -42,7 +47,13 @@ cd agentcy
 
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python main.py both databases/flock.db roles.json 9001
+bash run.sh
+```
+
+The server is now running at `http://localhost:9001`. Pass optional args to override defaults:
+
+```bash
+bash run.sh databases/myproject.db roles.json 9001
 ```
 
 ---

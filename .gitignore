@@ -31,6 +31,10 @@ chat_export.md
 
 # Docker
 *.env.docker
+docker-compose.override.yml
+
+# Agent logs
+logs/
 
 # Keep directory structure
 !databases/.gitkeep

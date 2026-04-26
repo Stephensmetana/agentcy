@@ -3,188 +3,1693 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Chatroom</title>
+<title>Agentcy</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #0d1117; --surface: #161b22; --border: #30363d;
-    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
-    --user: #3fb950; --system: #8b949e;
-  }
-  body { background: var(--bg); color: var(--text); font: 14px/1.6 'Segoe UI', system-ui, sans-serif;
-         height: 100vh; display: flex; flex-direction: column; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d1117; --surface: #161b22; --surface2: #1c2128; --border: #30363d;
+  --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff; --accent-hover: #79c0ff;
+  --user: #3fb950; --system: #6e7681; --danger: #f85149;
+  --sidebar-w: 220px;
+  --role-designer: #d2a8ff; --role-developer: #79c0ff; --role-qa: #ffa657;
+  --role-author: #ff7b72; --role-editor: #f0883e; --role-enhancer: #a5d6ff;
+  --role-narrator: #ffa657; --role-character: #79c0ff; --role-ideator: #56d364;
+  --role-skeptic: #ff7b72; --role-synthesizer: #d2a8ff;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--text); font: 14px/1.6 'Segoe UI', system-ui, sans-serif; display: flex; overflow: hidden; }
 
-  header { background: var(--surface); border-bottom: 1px solid var(--border);
-           padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
-  header h1 { font-size: 16px; font-weight: 600; color: var(--accent); }
-  #status-dot { width: 8px; height: 8px; border-radius: 50%; background: #56d364; flex-shrink: 0; }
-  #status-dot.offline { background: #f85149; }
-  #agent-list { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
-  .agent-badge { font-size: 11px; padding: 2px 8px; border-radius: 12px;
-                 border: 1px solid var(--border); color: var(--muted); }
+/* ---- SIDEBAR ---- */
+#sidebar {
+  width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--surface);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  height: 100vh; overflow-y: auto; flex-shrink: 0;
+}
+#workspace-header {
+  padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
+  font-weight: 700; font-size: 15px; color: var(--text); letter-spacing: 0.3px;
+}
+.sidebar-section { padding: 10px 0 4px; }
+.sidebar-section-title {
+  padding: 4px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--muted); display: flex; align-items: center;
+  justify-content: space-between;
+}
+.sidebar-section-title button {
+  background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px;
+  line-height: 1; padding: 0 2px; border-radius: 4px;
+}
+.sidebar-section-title button:hover { color: var(--text); background: rgba(255,255,255,.07); }
+.channel-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 8px 5px 16px; cursor: pointer; border-radius: 6px; margin: 1px 6px;
+  color: var(--muted); font-size: 13px; position: relative; user-select: none;
+}
+.channel-item:hover { background: rgba(255,255,255,.05); color: var(--text); }
+.channel-item.active { background: rgba(88,166,255,.15); color: var(--text); font-weight: 600; }
+.channel-item .ch-hash { font-size: 15px; color: var(--muted); flex-shrink: 0; }
+.channel-item .ch-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.channel-item .ch-menu { opacity: 0; font-size: 14px; padding: 0 4px; border-radius: 4px;
+  background: none; border: none; color: var(--muted); cursor: pointer; }
+.channel-item:hover .ch-menu { opacity: 1; }
+.channel-item .ch-menu:hover { background: rgba(255,255,255,.1); color: var(--text); }
 
-  #chat { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; }
+#sidebar-bottom {
+  margin-top: auto; border-top: 1px solid var(--border); padding: 10px 8px;
+}
+.nav-link {
+  display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+  color: var(--muted); text-decoration: none; border-radius: 6px; font-size: 13px;
+  cursor: pointer;
+}
+.nav-link:hover { background: rgba(255,255,255,.05); color: var(--text); }
+.nav-link.active { color: var(--accent); }
+.nav-link svg { width: 16px; height: 16px; flex-shrink: 0; }
 
-  .msg { display: flex; gap: 10px; padding: 4px 6px; border-radius: 6px; }
-  .msg:hover { background: rgba(255,255,255,.03); }
-  .msg-meta { flex-shrink: 0; width: 140px; text-align: right; }
-  .msg-sender { font-weight: 600; font-size: 12px; }
-  .msg-time { color: var(--muted); font-size: 11px; }
-  .msg-body { flex: 1; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+/* ---- MAIN ---- */
+#main { flex: 1; display: flex; flex-direction: column; height: 100vh; min-width: 0; }
 
-  /* Role colours */
-  .role-user      .msg-sender { color: var(--user); }
-  .role-system    .msg-sender { color: var(--system); font-style: italic; }
-  .role-designer  .msg-sender { color: #d2a8ff; }
-  .role-developer .msg-sender { color: #79c0ff; }
-  .role-qa        .msg-sender { color: #ffa657; }
-  .role-author    .msg-sender { color: #ff7b72; }
-  .role-editor    .msg-sender { color: #f0883e; }
-  .role-enhancer  .msg-sender { color: #a5d6ff; }
-  .role-narrator  .msg-sender { color: #ffa657; }
-  .role-character .msg-sender { color: #79c0ff; }
-  .role-ideator   .msg-sender { color: #56d364; }
-  .role-skeptic   .msg-sender { color: #ff7b72; }
-  .role-synthesizer .msg-sender { color: #d2a8ff; }
+/* ---- CHANNEL HEADER ---- */
+#channel-header {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 10px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  min-height: 50px;
+}
+#channel-header h2 { font-size: 15px; font-weight: 700; color: var(--text); }
+#channel-header .ch-desc { color: var(--muted); font-size: 12px; }
+#header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+#header-actions .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #56d364; }
+#header-actions .status-dot.offline { background: var(--danger); }
+.btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+.btn:hover { background: rgba(255,255,255,.07); border-color: var(--accent); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #0d1117; font-weight: 600; }
+.btn-primary:hover { background: var(--accent-hover); opacity: 1; }
+.btn-danger { background: rgba(248,81,73,.15); border-color: var(--danger); color: var(--danger); }
+.btn-danger:hover { background: rgba(248,81,73,.25); }
 
-  #compose { background: var(--surface); border-top: 1px solid var(--border);
-             padding: 12px 20px; display: flex; gap: 10px; flex-shrink: 0; }
-  #compose textarea { flex: 1; background: var(--bg); border: 1px solid var(--border);
-                      border-radius: 8px; color: var(--text); padding: 8px 12px;
-                      font: inherit; resize: none; height: 40px; outline: none; }
-  #compose textarea:focus { border-color: var(--accent); }
-  #compose button { background: var(--accent); color: #0d1117; border: none; border-radius: 8px;
-                    padding: 0 18px; font-weight: 600; cursor: pointer; font-size: 13px; }
-  #compose button:hover { opacity: .85; }
+/* ---- PINNED HUMAN MESSAGE ---- */
+#pinned-bar {
+  background: rgba(63,185,80,.08); border-bottom: 1px solid rgba(63,185,80,.2);
+  padding: 6px 20px; display: none; align-items: center; gap: 10px; flex-shrink: 0;
+  cursor: pointer; user-select: none;
+}
+#pinned-bar:hover { background: rgba(63,185,80,.13); }
+#pinned-bar .pin-icon { color: var(--user); font-size: 13px; flex-shrink: 0; }
+#pinned-bar .pin-text { color: var(--user); font-size: 12px; font-weight: 600; }
+#pinned-bar .pin-content { color: var(--text); font-size: 12px; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  #empty { color: var(--muted); text-align: center; margin: auto; font-style: italic; }
+/* ---- MESSAGES ---- */
+#chat { flex: 1; overflow-y: auto; padding: 12px 20px; display: flex; flex-direction: column; gap: 2px; }
+#empty { color: var(--muted); text-align: center; margin: auto; font-style: italic; font-size: 13px; }
+
+.msg {
+  display: flex; gap: 10px; padding: 5px 8px; border-radius: 6px;
+  position: relative; transition: background 0.1s;
+}
+.msg:hover { background: rgba(255,255,255,.03); }
+.msg.is-human { background: rgba(63,185,80,.05); border-left: 2px solid var(--user); }
+.msg.is-human:hover { background: rgba(63,185,80,.09); }
+.msg-meta { flex-shrink: 0; width: 130px; text-align: right; padding-top: 1px; }
+.msg-sender { font-weight: 700; font-size: 12px; }
+.msg-time { color: var(--muted); font-size: 10px; }
+.msg-body { flex: 1; color: var(--text); white-space: pre-wrap; word-break: break-word; font-size: 13px; }
+.msg-actions { position: absolute; right: 8px; top: 5px; display: flex; gap: 4px; }
+.copy-btn {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+  border-radius: 4px; padding: 2px 7px; font-size: 11px; cursor: pointer; opacity: 0.8;
+}
+.copy-btn:hover { background: var(--surface); color: var(--text); opacity: 1; border-color: var(--accent); }
+.copy-btn.copied { color: #56d364; border-color: #56d364; }
+
+/* Role colors */
+.role-user .msg-sender     { color: var(--user); }
+.role-system .msg-sender   { color: var(--system); font-style: italic; }
+.role-designer .msg-sender { color: var(--role-designer); }
+.role-developer .msg-sender{ color: var(--role-developer); }
+.role-qa .msg-sender       { color: var(--role-qa); }
+.role-author .msg-sender   { color: var(--role-author); }
+.role-editor .msg-sender   { color: var(--role-editor); }
+.role-enhancer .msg-sender { color: var(--role-enhancer); }
+.role-narrator .msg-sender { color: var(--role-narrator); }
+.role-character .msg-sender{ color: var(--role-character); }
+.role-ideator .msg-sender  { color: var(--role-ideator); }
+.role-skeptic .msg-sender  { color: var(--role-skeptic); }
+.role-synthesizer .msg-sender{ color: var(--role-synthesizer); }
+
+/* ---- COMPOSE ---- */
+#compose {
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 12px 20px; display: flex; gap: 10px; flex-shrink: 0;
+}
+#compose textarea {
+  flex: 1; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); padding: 8px 12px;
+  font: inherit; resize: none; height: 40px; outline: none; font-size: 13px;
+}
+#compose textarea:focus { border-color: var(--accent); }
+
+/* ---- CONTENT PAGES ---- */
+#page-content { flex: 1; overflow-y: auto; padding: 28px 32px; }
+.page-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.page-subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+.page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+.page-header h1 { font-size: 20px; font-weight: 700; }
+.page-header .actions { margin-left: auto; display: flex; gap: 8px; }
+.back-link { color: var(--accent); text-decoration: none; font-size: 13px; margin-bottom: 16px; display: inline-block; cursor: pointer; }
+.back-link:hover { text-decoration: underline; }
+
+/* ---- TABLES ---- */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { padding: 8px 12px; text-align: left; color: var(--muted); font-weight: 600; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+td { padding: 10px 12px; border-bottom: 1px solid rgba(48,54,61,.5); vertical-align: middle; }
+tr:hover td { background: rgba(255,255,255,.02); }
+.agent-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 11px; font-weight: 700; color: #0d1117; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+.badge-active { background: rgba(63,185,80,.15); color: #56d364; border: 1px solid rgba(63,185,80,.3); }
+.badge-stopped { background: rgba(248,81,73,.1); color: var(--danger); border: 1px solid rgba(248,81,73,.2); }
+.badge-idle { background: rgba(139,148,158,.1); color: var(--muted); border: 1px solid var(--border); }
+.channel-badge {
+  cursor: pointer; color: var(--accent); background: rgba(88,166,255,.1);
+  border: 1px solid rgba(88,166,255,.2); border-radius: 4px; padding: 2px 7px;
+  font-size: 12px; font-family: monospace; display: inline-block; transition: background 0.1s;
+}
+.channel-badge:hover { background: rgba(88,166,255,.2); border-color: var(--accent); }
+.inline-channel-select {
+  background: var(--bg); border: 1px solid var(--accent); color: var(--text);
+  border-radius: 4px; padding: 2px 6px; font-size: 12px; outline: none; font-family: monospace;
+}
+
+/* ---- RIGHT PANEL ---- */
+#channel-body { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+#chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+#right-panel {
+  width: 260px; min-width: 260px; border-left: 1px solid var(--border);
+  background: var(--surface); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+}
+.rpanel-tabs {
+  display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--surface);
+}
+.rpanel-tab {
+  flex: 1; padding: 9px 8px; background: none; border: none;
+  border-bottom: 2px solid transparent; color: var(--muted); cursor: pointer;
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px;
+}
+.rpanel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.rpanel-tab:hover { color: var(--text); }
+.rpanel-pane { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.notes-list {
+  flex: 1; overflow-y: auto; padding: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.note-card {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 10px; font-size: 12px;
+}
+.note-card:hover { border-color: rgba(88,166,255,.4); }
+.note-text { white-space: pre-wrap; word-break: break-word; line-height: 1.5; color: var(--text); }
+.note-card-footer { display: flex; justify-content: flex-end; gap: 4px; margin-top: 5px; }
+.note-add { flex-shrink: 0; padding: 8px; border-top: 1px solid var(--border); }
+.note-add textarea {
+  width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); padding: 6px 8px; font: inherit; font-size: 12px;
+  resize: none; outline: none; height: 58px;
+}
+.note-add textarea:focus { border-color: var(--accent); }
+.note-add .btn { margin-top: 5px; width: 100%; font-size: 12px; }
+.rpanel-tasks-list {
+  flex: 1; overflow-y: auto; padding: 8px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.rpanel-task-item {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 7px 10px; cursor: pointer;
+}
+.rpanel-task-item:hover { border-color: var(--accent); }
+.rpanel-task-title { font-size: 12px; font-weight: 600; color: var(--text); }
+.rpanel-task-status { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.rpanel-tasks-footer { flex-shrink: 0; padding: 8px; border-top: 1px solid var(--border); }
+
+/* ---- SETTINGS CARDS ---- */
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.settings-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 20px; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+}
+.settings-card:hover { border-color: var(--accent); background: var(--surface2); }
+.settings-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.settings-card p { color: var(--muted); font-size: 12px; }
+.settings-card .card-icon { font-size: 24px; margin-bottom: 12px; }
+
+/* ---- FORMS ---- */
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); padding: 8px 12px; font: inherit; outline: none; font-size: 13px;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+.form-group textarea { resize: vertical; min-height: 80px; }
+.form-row { display: flex; gap: 12px; }
+.form-row .form-group { flex: 1; }
+
+/* ---- MODAL ---- */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex;
+  align-items: center; justify-content: center; z-index: 1000;
+}
+.modal {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 24px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+}
+.modal h2 { font-size: 17px; font-weight: 700; margin-bottom: 18px; }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+.modal-close { position: absolute; top: 16px; right: 16px; }
+
+/* ---- TABS ---- */
+.tabs { display: flex; gap: 2px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+.tab { padding: 8px 14px; cursor: pointer; font-size: 13px; color: var(--muted);
+  border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+/* ---- TASK BOARD ---- */
+.task-board { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 16px; }
+.task-col { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  min-width: 240px; flex: 1; display: flex; flex-direction: column; max-height: calc(100vh - 180px); }
+.task-col-header { padding: 12px 14px; border-bottom: 1px solid var(--border);
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  display: flex; align-items: center; justify-content: space-between; }
+.task-col-items { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.task-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px; cursor: pointer; }
+.task-card:hover { border-color: var(--accent); }
+.task-card-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.task-card-meta { font-size: 11px; color: var(--muted); }
+
+/* ---- EXPORT CARD ---- */
+.export-list { display: flex; flex-direction: column; gap: 10px; }
+.export-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px 18px; display: flex; align-items: center; gap: 14px; }
+.export-item .ex-name { flex: 1; font-size: 14px; font-weight: 600; }
+.export-item .ex-count { font-size: 12px; color: var(--muted); }
+
+/* ---- OLLAMA STATUS ---- */
+.ollama-status { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 6px; }
+.ollama-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.ollama-dot.online { background: #56d364; }
+.ollama-dot.offline { background: var(--danger); }
+
+/* ---- SCROLLBARS ---- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ---- READ RECEIPTS ---- */
+#receipts-bar {
+  padding: 4px 20px 5px; min-height: 22px; display: flex; align-items: center;
+  gap: 6px; flex-shrink: 0; flex-wrap: wrap; border-top: 1px solid transparent;
+}
+#receipts-bar.has-receipts { border-top-color: var(--border); }
+.receipts-label { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.receipt-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--muted);
+  padding: 1px 7px 1px 4px; border-radius: 10px;
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07);
+}
+.receipt-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* ---- CONTEXT MENU ---- */
+.ctx-menu {
+  position: fixed; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 4px; z-index: 500; min-width: 160px; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.ctx-item { padding: 7px 12px; font-size: 13px; cursor: pointer; border-radius: 5px; }
+.ctx-item:hover { background: rgba(255,255,255,.06); }
+.ctx-item.danger { color: var(--danger); }
 </style>
 </head>
 <body>
 
-<header>
-  <div id="status-dot"></div>
-  <h1>AI Chatroom</h1>
-  <span id="msg-count" style="color:var(--muted);font-size:12px"></span>
-  <div id="agent-list"></div>
-</header>
+<aside id="sidebar">
+  <div id="workspace-header">Agentcy</div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">
+      Channels
+      <button onclick="App.openNewChannelModal()" title="New channel">+</button>
+    </div>
+    <div id="channel-list"></div>
+  </div>
+  <div id="sidebar-bottom">
+    <div class="nav-link" onclick="Router.navigate('/logs')">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5A1.5 1.5 0 013.5 1h9A1.5 1.5 0 0114 2.5v11a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 13.5zm1.5 0v11h9v-11zM4 5h8v1H4zm0 3h8v1H4zm0 3h5v1H4z"/></svg>
+      Logs
+    </div>
+    <div class="nav-link" onclick="Router.navigate('/tasks')">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2.5A1.5 1.5 0 013.5 1h9A1.5 1.5 0 0114 2.5v11a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 13.5zm1.5 0v11h9v-11zM4 5h8v1H4zm0 3h8v1H4zm0 3h5v1H4z"/></svg>
+      Tasks
+    </div>
+    <div class="nav-link" onclick="Router.navigate('/settings')">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7.429 1.525a6.593 6.593 0 011.142 0c.036.003.108.036.137.146l.289 1.105c.147.56.55.967.997 1.189.174.086.341.183.501.29.444.286.98.270 1.463.05l1.062-.454c.1-.043.19-.021.256.05.23.247.44.51.626.787.186.277.348.567.484.870.056.125.025.21-.06.277l-.924.616c-.433.288-.67.763-.672 1.25-.002.169-.006.337-.006.508 0 .17.004.338.006.507.002.487.239.961.672 1.25l.924.616c.085.067.116.152.06.277a6.07 6.07 0 01-1.11 1.657c-.066.072-.155.093-.256.05l-1.062-.454c-.483-.22-1.02-.235-1.463.05-.16.107-.327.204-.501.29-.447.222-.85.63-.997 1.189l-.289 1.105c-.029.11-.1.143-.137.146a6.593 6.593 0 01-1.142 0c-.036-.003-.108-.036-.137-.146l-.289-1.105c-.147-.56-.55-.967-.997-1.189a4.5 4.5 0 01-.501-.29c-.444-.285-.98-.27-1.463-.05l-1.062.454c-.1.043-.19.021-.256-.05a6.07 6.07 0 01-1.11-1.657c-.056-.125-.025-.21.06-.277l.924-.616c.433-.289.67-.763.672-1.25.002-.169.006-.337.006-.507 0-.17-.004-.339-.006-.508-.002-.487-.239-.962-.672-1.25l-.924-.616c-.085-.067-.116-.152-.06-.277a6.07 6.07 0 011.11-1.657c.066-.071.156-.092.256-.05l1.062.454c.483.22 1.02.236 1.463-.05.16-.107.327-.204.501-.29.447-.222.85-.629.997-1.189l.289-1.105c.029-.11.1-.143.137-.146zM8 10a2 2 0 100-4 2 2 0 000 4z"/></svg>
+      Settings
+    </div>
+  </div>
+</aside>
 
-<div id="chat"><div id="empty">No messages yet</div></div>
-
-<div id="compose">
-  <textarea id="input" placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
-            rows="1"></textarea>
-  <button id="send-btn">Send</button>
+<div id="main">
+  <!-- dynamic content renders here -->
 </div>
 
+<!-- Context menu -->
+<div id="ctx-menu" class="ctx-menu" style="display:none"></div>
+<!-- Modal overlay -->
+<div id="modal-overlay" class="modal-overlay" style="display:none" onclick="App.closeModal(event)"></div>
+
 <script>
-  const chat      = document.getElementById('chat');
-  const empty     = document.getElementById('empty');
-  const input     = document.getElementById('input');
-  const sendBtn   = document.getElementById('send-btn');
-  const dot       = document.getElementById('status-dot');
-  const agentList = document.getElementById('agent-list');
-  const msgCount  = document.getElementById('msg-count');
+'use strict';
 
-  let lastId = 0;
+// ============================================================
+// API CLIENT
+// ============================================================
+const API = {
+  async get(path) {
+    const r = await fetch(path);
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
+  async post(path, body) {
+    const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
+  async patch(path, body) {
+    const r = await fetch(path, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
+  async put(path, body) {
+    const r = await fetch(path, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
+  async del(path) {
+    const r = await fetch(path, { method:'DELETE' });
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  },
+};
 
-  function formatTime(iso) {
-    const d = new Date(iso);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  }
+// ============================================================
+// STATE
+// ============================================================
+const State = {
+  channels: [],
+  currentChannelId: null,
+  messages: {},    // channelId → []
+  lastId: {},      // channelId → int
+  agents: [],
+  ws: null,
+  online: true,
+  readReceipts: {},  // channelId → { agentName → {displayName, color} }
+};
 
-  function roleClass(role) {
-    return role ? `role-${role}` : 'role-user';
-  }
-
-  function escHtml(s) {
-    return String(s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  function appendMessage(m) {
-    empty.style.display = 'none';
-    const div = document.createElement('div');
-    div.className = `msg ${roleClass(m.role)}`;
-    div.dataset.id = m.id;
-    div.innerHTML = `
-      <div class="msg-meta">
-        <div class="msg-sender">${escHtml(m.sender)}</div>
-        <div class="msg-time">${formatTime(m.timestamp)}</div>
-      </div>
-      <div class="msg-body">${escHtml(m.content)}</div>`;
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
-    if (m.id > lastId) lastId = m.id;
-  }
-
-  function setOnline(v) {
-    dot.className = v ? '' : 'offline';
-    dot.title = v ? 'Server online' : 'Server offline — showing last known data';
-  }
-
-  async function fetchMessages() {
-    try {
-      const url = lastId === 0 ? '/api/messages' : `/api/messages/since/${lastId}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(res.status);
-      const msgs = await res.json();
-      msgs.forEach(appendMessage);
-      msgCount.textContent = `${document.querySelectorAll('.msg').length} messages`;
-      setOnline(true);
-    } catch {
-      setOnline(false);
+// ============================================================
+// ROUTER
+// ============================================================
+const Router = {
+  navigate(path, push = true) {
+    if (push) history.pushState(null, '', path);
+    this._dispatch(window.location.pathname);
+  },
+  _dispatch(path) {
+    closeCtxMenu();
+    let m;
+    if (path === '/' || path === '') {
+      const ch = State.channels.find(c => c.name === 'general') || State.channels[0];
+      Router.navigate(ch ? `/channel/${ch.id}` : '/settings', true);
+    } else if ((m = path.match(/^\/channel\/([^/]+)$/))) {
+      renderChannelView(m[1]);
+    } else if (path === '/settings') {
+      renderSettingsHub();
+    } else if (path === '/settings/agents') {
+      renderAgentsPage();
+    } else if (path === '/settings/roles') {
+      renderRolesPage();
+    } else if (path === '/settings/export') {
+      renderExportPage();
+    } else if (path === '/logs') {
+      renderLogsPage();
+    } else if (path === '/tasks') {
+      renderTasksPage();
+    } else if ((m = path.match(/^\/tasks\/(\d+)$/))) {
+      renderTaskDetail(parseInt(m[1]));
+    } else {
+      renderChannelView('general');
     }
-  }
+    updateSidebarActive(path);
+  },
+};
 
-  async function fetchAgents() {
+window.addEventListener('popstate', () => Router._dispatch(window.location.pathname));
+
+// ============================================================
+// HELPERS
+// ============================================================
+function esc(s) {
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+function roleClass(role) { return role ? `role-${role}` : 'role-user'; }
+function initials(name) { return (name||'??').slice(0,2).toUpperCase(); }
+
+function setOnline(v) {
+  State.online = v;
+  document.querySelectorAll('.status-dot').forEach(d => d.classList.toggle('offline', !v));
+}
+
+function showToast(msg, ok = true) {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:20px;right:20px;background:${ok?'#56d364':'#f85149'};
+    color:#0d1117;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;
+    animation:fadeIn .2s ease`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+// ============================================================
+// SIDEBAR
+// ============================================================
+function renderSidebar() {
+  const list = document.getElementById('channel-list');
+  const path = window.location.pathname;
+  list.innerHTML = State.channels.map(ch => {
+    const active = path === `/channel/${ch.id}`;
+    return `<div class="channel-item ${active?'active':''}" onclick="Router.navigate('/channel/${ch.id}')"
+      data-id="${ch.id}">
+      <span class="ch-hash">#</span>
+      <span class="ch-name">${esc(ch.name)}</span>
+      <button class="ch-menu" onclick="event.stopPropagation();showChannelMenu(event,${ch.id},${JSON.stringify(ch.name)})" title="Options">⋯</button>
+    </div>`;
+  }).join('');
+}
+
+function updateSidebarActive(path) {
+  document.querySelectorAll('.channel-item').forEach(el => {
+    el.classList.toggle('active', path === `/channel/${el.dataset.id}`);
+  });
+  document.querySelectorAll('.nav-link').forEach(el => {
+    const href = el.getAttribute('onclick')||'';
+    el.classList.toggle('active', path.startsWith('/settings') && href.includes('/settings') ||
+      path.startsWith('/tasks') && href.includes('/tasks'));
+  });
+}
+
+// ============================================================
+// CHANNEL VIEW
+// ============================================================
+let pollInterval = null;
+
+async function renderChannelView(channelIdOrName) {
+  closeWS();
+  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+
+  // Resolve channel
+  let ch = State.channels.find(c => String(c.id) === String(channelIdOrName) || c.name === channelIdOrName);
+  if (!ch) {
+    // Try to load by name from API
     try {
-      const res = await fetch('/api/agents');
-      if (!res.ok) return;
-      const agents = await res.json();
-      agentList.innerHTML = agents.map(a =>
-        `<span class="agent-badge ${roleClass(a.role)}">${escHtml(a.name)} (${escHtml(a.role)})</span>`
-      ).join('');
+      const all = await API.get('/api/channels');
+      State.channels = all;
+      renderSidebar();
+      ch = all.find(c => String(c.id) === String(channelIdOrName) || c.name === String(channelIdOrName));
     } catch {}
   }
-
-  async function sendMessage() {
-    const content = input.value.trim();
-    if (!content) return;
-    input.value = '';
-    input.style.height = '40px';
-    try {
-      const res = await fetch('/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
-      });
-      if (res.ok) {
-        const msg = await res.json();
-        appendMessage(msg);
-        msgCount.textContent = `${document.querySelectorAll('.msg').length} messages`;
-      }
-    } catch {
-      setOnline(false);
-    }
+  if (!ch) {
+    document.getElementById('main').innerHTML = `<div style="padding:40px;color:var(--muted)">Channel not found.</div>`;
+    return;
   }
+
+  State.currentChannelId = ch.id;
+
+  document.getElementById('main').innerHTML = `
+    <div id="channel-header">
+      <h2>#${esc(ch.name)}</h2>
+      <div id="header-actions">
+        <div class="status-dot" title="Server status"></div>
+        <button class="btn" onclick="exportChannel('${esc(ch.name)}')" title="Export chat">⬇ Export</button>
+        <button class="btn" onclick="showChannelMenu(event, ${ch.id}, '${esc(ch.name)}')" title="Channel settings">
+          <svg viewBox="0 0 16 16" fill="currentColor" style="width:14px;height:14px;vertical-align:middle"><path d="M7.429 1.525a6.593 6.593 0 011.142 0c.036.003.108.036.137.146l.289 1.105c.147.56.55.967.997 1.189.174.086.341.183.501.29.444.286.98.270 1.463.05l1.062-.454c.1-.043.19-.021.256.05.23.247.44.51.626.787.186.277.348.567.484.870.056.125.025.21-.06.277l-.924.616c-.433.288-.67.763-.672 1.25-.002.169-.006.337-.006.508 0 .17.004.338.006.507.002.487.239.961.672 1.25l.924.616c.085.067.116.152.06.277a6.07 6.07 0 01-1.11 1.657c-.066.072-.155.093-.256.05l-1.062-.454c-.483-.22-1.02-.235-1.463.05-.16.107-.327.204-.501.29-.447.222-.85.63-.997 1.189l-.289 1.105c-.029.11-.1.143-.137.146a6.593 6.593 0 01-1.142 0c-.036-.003-.108-.036-.137-.146l-.289-1.105c-.147-.56-.55-.967-.997-1.189a4.5 4.5 0 01-.501-.29c-.444-.285-.98-.27-1.463-.05l-1.062.454c-.1.043-.19.021-.256-.05a6.07 6.07 0 01-1.11-1.657c-.056-.125-.025-.21.06-.277l.924-.616c.433-.289.67-.763.672-1.25.002-.169.006-.337.006-.507 0-.17-.004-.339-.006-.508-.002-.487-.239-.962-.672-1.25l-.924-.616c-.085-.067-.116-.152-.06-.277a6.07 6.07 0 011.11-1.657c.066-.071.156-.092.256-.05l1.062.454c.483.22 1.02.236 1.463-.05.16-.107.327-.204.501-.29.447-.222.85-.629.997-1.189l.289-1.105c.029-.11.1-.143.137-.146zM8 10a2 2 0 100-4 2 2 0 000 4z"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="pinned-bar" onclick="showPinnedMenu(event)">
+      <span class="pin-icon">📌</span>
+      <span class="pin-text">Latest from user:</span>
+      <span class="pin-content" id="pinned-content"></span>
+    </div>
+    <div id="channel-body">
+      <div id="chat-area">
+        <div id="chat"><div id="empty">No messages yet</div></div>
+        <div id="receipts-bar"></div>
+        <div id="compose">
+          <textarea id="msg-input" placeholder="Message #${esc(ch.name)} (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
+          <button class="btn btn-primary" id="send-btn">Send</button>
+        </div>
+      </div>
+      <div id="right-panel">
+        <div class="rpanel-tabs">
+          <button class="rpanel-tab active" onclick="switchRPanel('notes',this)">Notes</button>
+          <button class="rpanel-tab" onclick="switchRPanel('tasks',this)">Tasks</button>
+        </div>
+        <div id="rpanel-notes" class="rpanel-pane">
+          <div class="notes-list" id="notes-list"><div style="color:var(--muted);padding:16px;font-size:12px;text-align:center">Loading…</div></div>
+          <div class="note-add">
+            <textarea id="note-input" placeholder="Add a note… injected into every agent read."></textarea>
+            <button class="btn btn-primary" onclick="Notes.add('${esc(ch.name)}')">+ Add Note</button>
+          </div>
+        </div>
+        <div id="rpanel-tasks" class="rpanel-pane" style="display:none">
+          <div class="rpanel-tasks-list" id="rpanel-tasks-list"><div style="color:var(--muted);padding:16px;font-size:12px;text-align:center">Loading…</div></div>
+          <div class="rpanel-tasks-footer">
+            <button class="btn" style="width:100%;font-size:12px" onclick="Router.navigate('/tasks')">Open Task Board →</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  const input = document.getElementById('msg-input');
+  const sendBtn = document.getElementById('send-btn');
 
   input.addEventListener('input', () => {
     input.style.height = '40px';
     input.style.height = Math.min(input.scrollHeight, 120) + 'px';
   });
-
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendUserMessage(ch.name); }
+  });
+  sendBtn.addEventListener('click', () => sendUserMessage(ch.name));
+
+  // Load messages
+  State.messages[ch.id] = [];
+  State.lastId[ch.id] = 0;
+  await fetchMessages(ch);
+  await updatePinned(ch.name);
+
+  // Connect WebSocket
+  connectWS(ch.id, ch.name);
+  updateReceiptsBar(ch.id);
+  updateSidebarActive(`/channel/${ch.id}`);
+  RPanel.init(ch.name);
+}
+
+async function fetchMessages(ch) {
+  try {
+    const id = ch.id;
+    const since = State.lastId[id] || 0;
+    const url = since === 0 ? `/api/messages?channel=${encodeURIComponent(ch.name)}`
+                           : `/api/messages/since/${since}?channel=${encodeURIComponent(ch.name)}`;
+    const msgs = await API.get(url);
+    msgs.forEach(m => appendMessage(m, id));
+    setOnline(true);
+  } catch { setOnline(false); }
+}
+
+let _pinnedMsgId = null;
+let _pinnedMsgContent = '';
+
+async function updatePinned(channelName) {
+  try {
+    const msg = await API.get(`/api/pinned?channel=${encodeURIComponent(channelName)}`);
+    const bar = document.getElementById('pinned-bar');
+    const content = document.getElementById('pinned-content');
+    if (msg && msg.content) {
+      _pinnedMsgId = msg.id;
+      _pinnedMsgContent = msg.content;
+      if (bar) bar.style.display = 'flex';
+      if (content) content.textContent = msg.content.slice(0, 120);
+    } else {
+      _pinnedMsgId = null;
+      _pinnedMsgContent = '';
+      if (bar) bar.style.display = 'none';
+    }
+  } catch {}
+}
+
+function appendMessage(m, channelId) {
+  const chat = document.getElementById('chat');
+  const empty = document.getElementById('empty');
+  if (!chat) return;
+  if (empty) empty.style.display = 'none';
+
+  const isHuman = m.sender === 'user';
+  const existing = chat.querySelector(`[data-id="${m.id}"]`);
+  if (existing) return;
+
+  const div = document.createElement('div');
+  div.className = `msg ${roleClass(m.role)} ${isHuman ? 'is-human' : ''}`;
+  div.dataset.id = m.id;
+
+  const displayName = m.sender;
+  const copyFullBlock = `${m.sender} (${m.role||'user'})  ${m.timestamp}\n\n${m.content}`;
+
+  div.innerHTML = `
+    <div class="msg-meta">
+      <div class="msg-sender">${esc(displayName)}</div>
+      <div class="msg-time">${fmtTime(m.timestamp)}</div>
+    </div>
+    <div class="msg-body">${esc(m.content)}</div>
+    <div class="msg-actions">
+      <button class="copy-btn" title="Copy message" data-copy="${esc(copyFullBlock)}">Copy</button>
+    </div>`;
+
+  div.querySelector('.copy-btn').addEventListener('click', function() {
+    navigator.clipboard.writeText(this.dataset.copy).then(() => {
+      this.textContent = 'Copied!';
+      this.classList.add('copied');
+      setTimeout(() => { this.textContent = 'Copy'; this.classList.remove('copied'); }, 1500);
+    });
   });
 
-  sendBtn.addEventListener('click', sendMessage);
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  if (m.id > (State.lastId[channelId] || 0)) State.lastId[channelId] = m.id;
+  if (State.messages[channelId]) State.messages[channelId].push(m);
+}
 
-  fetchMessages();
-  fetchAgents();
-  setInterval(fetchMessages, 2000);
-  setInterval(fetchAgents, 10000);
+async function sendUserMessage(channelName) {
+  const input = document.getElementById('msg-input');
+  if (!input) return;
+  const content = input.value.trim();
+  if (!content) return;
+  input.value = '';
+  input.style.height = '40px';
+  try {
+    const msg = await API.post('/api/messages', { content, channel: channelName });
+    const ch = State.channels.find(c => c.name === channelName);
+    if (ch) appendMessage(msg, ch.id);
+    await updatePinned(channelName);
+  } catch { setOnline(false); }
+}
+
+function exportChannel(channelName) {
+  window.location.href = `/api/export?channel=${encodeURIComponent(channelName)}`;
+}
+
+// ============================================================
+// WEBSOCKET
+// ============================================================
+function updateReceiptsBar(channelId) {
+  const bar = document.getElementById('receipts-bar');
+  if (!bar) return;
+  const receipts = State.readReceipts[channelId];
+  const entries = receipts ? Object.values(receipts) : [];
+  if (entries.length === 0) {
+    bar.innerHTML = '';
+    bar.classList.remove('has-receipts');
+    return;
+  }
+  const pills = entries.map(r =>
+    `<span class="receipt-pill"><span class="receipt-dot" style="background:${esc(r.color)}"></span>${esc(r.displayName)}</span>`
+  ).join('');
+  bar.innerHTML = `<span class="receipts-label">👁 seen by</span>${pills}`;
+  bar.classList.add('has-receipts');
+}
+
+function connectWS(channelId, channelName) {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  // Use channel name as the WS key — server broadcasts are keyed by channel name
+  const ws = new WebSocket(`${proto}://${location.host}/ws/${encodeURIComponent(channelName)}`);
+  State.ws = ws;
+
+  ws.onmessage = e => {
+    try {
+      const payload = JSON.parse(e.data);
+      if (payload.type === 'message') {
+        const m = payload.data;
+        if (m.channel === channelName) {
+          appendMessage(m, channelId);
+          if (m.sender === 'user') updatePinned(channelName);
+        }
+      } else if (payload.type === 'message_updated') {
+        const m = payload.data;
+        if (m.id === _pinnedMsgId) updatePinned(channelName);
+      } else if (payload.type === 'message_deleted') {
+        if (payload.data.id === _pinnedMsgId) updatePinned(channelName);
+      } else if (payload.type === 'read_receipt') {
+        if (payload.channel === channelName) {
+          if (!State.readReceipts[channelId]) State.readReceipts[channelId] = {};
+          State.readReceipts[channelId][payload.agent_name] = {
+            displayName: payload.display_name,
+            color: payload.color,
+          };
+          updateReceiptsBar(channelId);
+        }
+      }
+    } catch {}
+  };
+  ws.onerror = () => setOnline(false);
+  ws.onclose = () => {
+    setOnline(false);
+    // Reconnect after 3s if still on same channel
+    setTimeout(() => {
+      if (State.currentChannelId === channelId && document.getElementById('chat')) {
+        connectWS(channelId, channelName);
+      }
+    }, 3000);
+  };
+  ws.onopen = () => setOnline(true);
+}
+
+function closeWS() {
+  if (State.ws) { try { State.ws.close(); } catch {} State.ws = null; }
+}
+
+// ============================================================
+// CONTEXT MENU (for channel items)
+// ============================================================
+function showChannelMenu(event, channelId, channelName) {
+  const menu = document.getElementById('ctx-menu');
+  const items = [
+    { label: 'Rename channel', action: () => App.openRenameChannelModal(channelId, channelName) },
+    { label: 'Delete channel', action: () => App.deleteChannel(channelId, channelName), danger: true },
+  ];
+  menu.innerHTML = items.map((it, i) =>
+    `<div class="ctx-item ${it.danger?'danger':''}" data-idx="${i}">${it.label}</div>`
+  ).join('');
+  menu.querySelectorAll('.ctx-item').forEach((el, i) => {
+    el.addEventListener('click', () => { items[i].action(); closeCtxMenu(); });
+  });
+  const x = Math.min(event.clientX, window.innerWidth - 180);
+  const y = Math.min(event.clientY, window.innerHeight - 80);
+  menu.style.left = x + 'px'; menu.style.top = y + 'px'; menu.style.display = 'block';
+  setTimeout(() => document.addEventListener('click', closeCtxMenu, {once: true}), 10);
+}
+
+function closeCtxMenu() { document.getElementById('ctx-menu').style.display = 'none'; }
+
+function showPinnedMenu(event) {
+  if (!_pinnedMsgId) return;
+  const items = [
+    { label: 'Edit message', action: () => App.openEditPinnedModal() },
+    { label: 'Remove message', danger: true, action: () => App.removePinnedMessage() },
+  ];
+  const menu = document.getElementById('ctx-menu');
+  menu.innerHTML = items.map((it, i) =>
+    `<div class="ctx-item ${it.danger?'danger':''}" data-idx="${i}">${it.label}</div>`
+  ).join('');
+  menu.querySelectorAll('.ctx-item').forEach((el, i) => {
+    el.addEventListener('click', () => { items[i].action(); closeCtxMenu(); });
+  });
+  const x = Math.min(event.clientX, window.innerWidth - 180);
+  const y = Math.min(event.clientY, window.innerHeight - 80);
+  menu.style.left = x + 'px'; menu.style.top = y + 'px'; menu.style.display = 'block';
+  setTimeout(() => document.addEventListener('click', closeCtxMenu, {once: true}), 10);
+}
+
+// ============================================================
+// SETTINGS HUB
+// ============================================================
+function renderSettingsHub() {
+  closeWS();
+  document.getElementById('main').innerHTML = `
+    <div id="page-content">
+      <div class="page-header"><h1>Settings</h1></div>
+      <div class="settings-grid">
+        <div class="settings-card" onclick="Router.navigate('/settings/agents')">
+          <div class="card-icon">🤖</div>
+          <h3>Agents</h3>
+          <p>Manage running AI agents. Spawn Claude, Ollama, or custom agents. View status and kill processes.</p>
+        </div>
+        <div class="settings-card" onclick="Router.navigate('/settings/roles')">
+          <div class="card-icon">🎭</div>
+          <h3>Roles</h3>
+          <p>Create, edit, and delete roles. Manage role occupancy and export to roles.json.</p>
+        </div>
+        <div class="settings-card" onclick="Router.navigate('/settings/export')">
+          <div class="card-icon">📥</div>
+          <h3>Export</h3>
+          <p>Download chat history as Markdown. Export per-channel or all channels at once.</p>
+        </div>
+        <div class="settings-card" onclick="Router.navigate('/tasks')">
+          <div class="card-icon">📋</div>
+          <h3>Tasks</h3>
+          <p>View and manage the task board. Track work across channels.</p>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// AGENTS PAGE
+// ============================================================
+async function renderAgentsPage() {
+  closeWS();
+  document.getElementById('main').innerHTML = `<div id="page-content"><div style="color:var(--muted);padding:40px">Loading…</div></div>`;
+  try {
+    State.agents = await API.get('/api/agents');
+    _renderAgentsUI();
+  } catch (e) {
+    document.getElementById('main').innerHTML = `<div id="page-content"><p style="color:var(--danger)">Error: ${esc(e.message)}</p></div>`;
+  }
+}
+
+function _renderAgentsUI() {
+  const rows = State.agents.map(a => {
+    const color = a.color || '#8b949e';
+    const init = initials(a.display_name || a.name);
+    const statusClass = a.status === 'active' ? 'badge-active' : a.status === 'stopped' ? 'badge-stopped' : 'badge-idle';
+    return `<tr>
+      <td><div class="agent-avatar" style="background:${esc(color)}">${esc(init)}</div></td>
+      <td><div style="font-weight:600">${esc(a.display_name||a.name)}</div>
+          <div style="font-size:11px;color:var(--muted)">${esc(a.name)}</div></td>
+      <td>${esc(a.role)}</td>
+      <td>${esc(a.agent_type||'—')}</td>
+      <td>${esc(a.model||'—')}</td>
+      <td><span class="channel-badge" title="Click to reassign channel" onclick="App.openChannelPicker('${esc(a.name)}','${esc(a.channel||'general')}',this.parentElement)">#${esc(a.channel||'general')}</span></td>
+      <td><span class="badge ${statusClass}">${esc(a.status||'active')}</span></td>
+      <td>
+        <button class="btn" onclick="App.openReassignModal('${esc(a.name)}','${esc(a.role)}')">Reassign</button>
+        <button class="btn" onclick="App.openLogsModal('${esc(a.name)}')">Logs</button>
+        ${a.pid
+          ? `<button class="btn btn-danger" onclick="App.killAgent('${esc(a.name)}')">Kill</button>`
+          : `<button class="btn btn-danger" onclick="App.killAgent('${esc(a.name)}')">Delete</button>`
+        }
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('main').innerHTML = `
+    <div id="page-content">
+      <div class="page-header">
+        <div><h1>Agent Manager</h1><p style="color:var(--muted);font-size:13px;margin-top:4px">${State.agents.length} registered agents</p></div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="App.openSpawnModal()">+ Add Agent</button>
+          <button class="btn" onclick="renderAgentsPage()">↻ Refresh</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th></th><th>Name</th><th>Role</th><th>Type</th><th>Model</th><th>Channel</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">No agents yet.</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+// ============================================================
+// LOGS PAGE
+// ============================================================
+async function renderLogsPage() {
+  closeWS();
+  document.getElementById('main').innerHTML = `<div id="page-content"><div style="color:var(--muted);padding:40px">Loading…</div></div>`;
+  try {
+    const agents = await API.get('/api/agents');
+    const logResults = await Promise.all(
+      agents.map(a =>
+        fetch(`/api/agents/${encodeURIComponent(a.name)}/logs?tail=200`)
+          .then(r => r.text())
+          .then(text => ({ name: a.name, display: a.display_name || a.name, status: a.status, text }))
+          .catch(() => ({ name: a.name, display: a.display_name || a.name, status: a.status, text: '(error fetching logs)' }))
+      )
+    );
+
+    // Store log data so onclick handlers can reference it without embedding it in HTML
+    window._logData = {};
+    logResults.forEach(r => { window._logData[r.name] = r.text; });
+    window._logDataAll = logResults
+      .map(r => `=== ${r.display} (${r.name}) [${r.status}] ===\n${r.text.trim() || '(no logs)'}`)
+      .join('\n\n');
+
+    const sections = logResults.map(r => {
+      const statusClass = r.status === 'active' ? 'badge-active' : r.status === 'stopped' ? 'badge-stopped' : 'badge-idle';
+      return `<div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <strong>${esc(r.display)}</strong>
+          <span style="font-size:11px;color:var(--muted)">${esc(r.name)}</span>
+          <span class="badge ${statusClass}">${esc(r.status)}</span>
+          <button class="btn" style="margin-left:auto;font-size:11px" onclick="copyText(window._logData[${JSON.stringify(r.name)}], this)">Copy</button>
+        </div>
+        <pre style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:11px;line-height:1.5;max-height:250px;overflow-y:auto;white-space:pre-wrap;word-break:break-all">${esc(r.text.trim() || '(no logs)')}</pre>
+      </div>`;
+    }).join('');
+
+    document.getElementById('main').innerHTML = `
+      <div id="page-content">
+        <div class="page-header">
+          <div><h1>Agent Logs</h1><p style="color:var(--muted);font-size:13px;margin-top:4px">${agents.length} agents</p></div>
+          <div class="actions">
+            <button class="btn" onclick="copyText(window._logDataAll, this)">Copy All</button>
+            <button class="btn" onclick="renderLogsPage()">↻ Refresh</button>
+          </div>
+        </div>
+        ${agents.length ? sections : '<p style="color:var(--muted)">No agents found.</p>'}
+      </div>`;
+  } catch (e) {
+    document.getElementById('main').innerHTML = `<div id="page-content"><p style="color:var(--danger);padding:40px">${esc(e.message)}</p></div>`;
+  }
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
+}
+
+// ============================================================
+// ROLES PAGE
+// ============================================================
+async function renderRolesPage() {
+  closeWS();
+  document.getElementById('main').innerHTML = `<div id="page-content"><div style="color:var(--muted);padding:40px">Loading…</div></div>`;
+  try {
+    const roles = await API.get('/api/roles');
+    State.roles = roles;
+    const rows = roles.map(r => `<tr>
+      <td><strong>${esc(r.name)}</strong></td>
+      <td>${esc(r.description)}</td>
+      <td style="max-width:280px;font-size:11px;color:var(--muted)">${r.rules.map(esc).join(' · ')}</td>
+      <td>
+        <button class="btn" onclick="App.openEditRoleModal('${esc(r.name)}')">Edit</button>
+        <button class="btn btn-danger" onclick="App.deleteRole('${esc(r.name)}')">Delete</button>
+      </td>
+    </tr>`).join('');
+    document.getElementById('main').innerHTML = `
+      <div id="page-content">
+        <div class="page-header">
+          <h1>Role Manager</h1>
+          <div class="actions">
+            <button class="btn btn-primary" onclick="App.openNewRoleModal()">+ New Role</button>
+            <a href="/api/roles/export" class="btn">⬇ Export roles.json</a>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Name</th><th>Description</th><th>Rules</th><th>Actions</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">No roles.</td></tr>'}</tbody>
+        </table>
+      </div>`;
+  } catch (e) {
+    document.getElementById('main').innerHTML = `<div id="page-content"><p style="color:var(--danger)">Error: ${esc(e.message)}</p></div>`;
+  }
+}
+
+// ============================================================
+// EXPORT PAGE
+// ============================================================
+async function renderExportPage() {
+  closeWS();
+  document.getElementById('main').innerHTML = `<div id="page-content"><div style="color:var(--muted);padding:40px">Loading…</div></div>`;
+  try {
+    const channels = await API.get('/api/channels');
+    const items = channels.map(ch => `
+      <div class="export-item">
+        <span class="ex-name">#${esc(ch.name)}</span>
+        <a href="/api/export?channel=${encodeURIComponent(ch.name)}" class="btn">⬇ Download .md</a>
+      </div>`).join('');
+    document.getElementById('main').innerHTML = `
+      <div id="page-content">
+        <div class="page-header">
+          <h1>Export Center</h1>
+          <div class="actions"><a href="/api/export/all" class="btn btn-primary">⬇ Export All Channels</a></div>
+        </div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:20px">Download chat history as Markdown files.</p>
+        <div class="export-list">${items}</div>
+      </div>`;
+  } catch (e) {
+    document.getElementById('main').innerHTML = `<div id="page-content"><p style="color:var(--danger)">Error: ${esc(e.message)}</p></div>`;
+  }
+}
+
+// ============================================================
+// TASKS PAGE
+// ============================================================
+async function renderTasksPage() {
+  closeWS();
+  const channelParam = new URLSearchParams(location.search).get('channel');
+  document.getElementById('main').innerHTML = `<div id="page-content"><div style="color:var(--muted);padding:40px">Loading…</div></div>`;
+  try {
+    const url = channelParam ? `/api/tasks?channel=${encodeURIComponent(channelParam)}` : '/api/tasks';
+    const tasks = await API.get(url);
+    const cols = { todo: [], 'in-progress': [], blocked: [], done: [] };
+    tasks.forEach(t => { if (cols[t.status]) cols[t.status].push(t); else cols.todo.push(t); });
+    const colTitles = { todo: 'To Do', 'in-progress': 'In Progress', blocked: 'Blocked', done: 'Done' };
+    const colColors = { todo: 'var(--muted)', 'in-progress': 'var(--accent)', blocked: 'var(--danger)', done: 'var(--user)' };
+    const colHtml = Object.entries(cols).map(([status, items]) => `
+      <div class="task-col">
+        <div class="task-col-header" style="color:${colColors[status]}">${colTitles[status]}<span>${items.length}</span></div>
+        <div class="task-col-items">
+          ${items.map(t => `<div class="task-card" onclick="Router.navigate('/tasks/${t.id}')">
+            <div class="task-card-title">${esc(t.title)}</div>
+            <div class="task-card-meta">#${esc(t.channel)}</div>
+          </div>`).join('') || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Empty</div>'}
+        </div>
+      </div>`).join('');
+    document.getElementById('main').innerHTML = `
+      <div id="page-content" style="display:flex;flex-direction:column;height:100%">
+        <div class="page-header">
+          <h1>Task Board${channelParam ? ` — #${esc(channelParam)}` : ''}</h1>
+          <div class="actions"><button class="btn btn-primary" onclick="App.openNewTaskModal()">+ New Task</button></div>
+        </div>
+        <div class="task-board">${colHtml}</div>
+      </div>`;
+  } catch (e) {
+    document.getElementById('main').innerHTML = `<div id="page-content"><p style="color:var(--danger)">Error: ${esc(e.message)}</p></div>`;
+  }
+}
+
+async function renderTaskDetail(taskId) {
+  closeWS();
+  document.getElementById('main').innerHTML = `<div id="page-content"><div style="color:var(--muted);padding:40px">Loading…</div></div>`;
+  try {
+    const task = await API.get(`/api/tasks/${taskId}`);
+    const statusOptions = ['todo','in-progress','blocked','done'].map(s =>
+      `<option value="${s}" ${task.status===s?'selected':''}>${s}</option>`).join('');
+    document.getElementById('main').innerHTML = `
+      <div id="page-content">
+        <span class="back-link" onclick="Router.navigate('/tasks')">← Back to board</span>
+        <div class="page-header">
+          <h1>${esc(task.title)}</h1>
+          <div class="actions">
+            <button class="btn btn-danger" onclick="App.deleteTask(${task.id})">Delete</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 200px;gap:24px;margin-top:16px">
+          <div>
+            <div class="form-group">
+              <label>Description</label>
+              <textarea id="task-desc" rows="6">${esc(task.description||'')}</textarea>
+            </div>
+            <button class="btn btn-primary" onclick="App.saveTask(${task.id})">Save</button>
+          </div>
+          <div>
+            <div class="form-group"><label>Status</label>
+              <select id="task-status">${statusOptions}</select>
+            </div>
+            <div class="form-group"><label>Channel</label>
+              <input id="task-channel" value="${esc(task.channel)}" />
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:8px">
+              Created: ${fmtTime(task.created_at)}<br>
+              Updated: ${fmtTime(task.updated_at)}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  } catch (e) {
+    document.getElementById('main').innerHTML = `<div id="page-content"><p style="color:var(--danger)">Error: ${esc(e.message)}</p></div>`;
+  }
+}
+
+// ============================================================
+// MODAL SYSTEM
+// ============================================================
+const App = {
+  _modal: null,
+
+  showModal(title, bodyHtml, onConfirm) {
+    const overlay = document.getElementById('modal-overlay');
+    overlay.style.display = 'flex';
+    const id = 'modal-' + Date.now();
+    overlay.innerHTML = `<div class="modal" id="${id}" onclick="event.stopPropagation()">
+      <h2>${title}</h2>
+      ${bodyHtml}
+    </div>`;
+    this._modal = { id, onConfirm };
+  },
+
+  closeModal(event) {
+    if (!event || event.target === document.getElementById('modal-overlay')) {
+      document.getElementById('modal-overlay').style.display = 'none';
+    }
+  },
+
+  confirm() {
+    if (this._modal && this._modal.onConfirm) this._modal.onConfirm();
+  },
+
+  // ---- Channel modals ----
+  openNewChannelModal() {
+    this.showModal('New Channel',
+      `<div class="form-group"><label>Channel name</label><input id="new-ch-name" placeholder="e.g. design" autofocus /></div>
+       <div class="modal-footer">
+         <button class="btn" onclick="App.closeModal()">Cancel</button>
+         <button class="btn btn-primary" onclick="App.createChannel()">Create</button>
+       </div>`,
+    );
+    setTimeout(() => document.getElementById('new-ch-name')?.focus(), 50);
+  },
+
+  async createChannel() {
+    const name = document.getElementById('new-ch-name')?.value.trim();
+    if (!name) return;
+    try {
+      const ch = await API.post('/api/channels', { name });
+      State.channels.push(ch);
+      renderSidebar();
+      this.closeModal();
+      Router.navigate(`/channel/${ch.id}`);
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  openRenameChannelModal(channelId, channelName) {
+    this.showModal('Rename Channel',
+      `<div class="form-group"><label>New name</label><input id="rename-ch" value="${esc(channelName)}" autofocus /></div>
+       <div class="modal-footer">
+         <button class="btn" onclick="App.closeModal()">Cancel</button>
+         <button class="btn btn-primary" onclick="App.renameChannel(${channelId})">Rename</button>
+       </div>`,
+    );
+    setTimeout(() => document.getElementById('rename-ch')?.focus(), 50);
+  },
+
+  async renameChannel(channelId) {
+    const newName = document.getElementById('rename-ch')?.value.trim();
+    if (!newName) return;
+    try {
+      const ch = await API.patch(`/api/channels/${channelId}`, { name: newName });
+      const idx = State.channels.findIndex(c => c.id === channelId);
+      if (idx !== -1) State.channels[idx] = ch;
+      renderSidebar();
+      this.closeModal();
+      showToast('Channel renamed');
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  async deleteChannel(channelId, channelName) {
+    if (!confirm(`Delete #${channelName} and all its messages? This cannot be undone.`)) return;
+    try {
+      await API.del(`/api/channels/${channelId}`);
+      State.channels = State.channels.filter(c => c.id !== channelId);
+      renderSidebar();
+      const first = State.channels[0];
+      if (first) Router.navigate(`/channel/${first.id}`);
+      else Router.navigate('/settings');
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  // ---- Pinned message actions ----
+  openEditPinnedModal() {
+    this.showModal('Edit message',
+      `<div class="form-group"><textarea id="pin-edit-input" class="form-control" style="min-height:80px">${esc(_pinnedMsgContent)}</textarea></div>
+       <div class="modal-footer">
+         <button class="btn" onclick="App.closeModal()">Cancel</button>
+         <button class="btn btn-primary" onclick="App.savePinnedEdit()">Save</button>
+       </div>`,
+    );
+    setTimeout(() => document.getElementById('pin-edit-input')?.focus(), 50);
+  },
+
+  async savePinnedEdit() {
+    const newContent = document.getElementById('pin-edit-input')?.value.trim();
+    if (!newContent || !_pinnedMsgId) return;
+    try {
+      await API.patch(`/api/messages/${_pinnedMsgId}`, { content: newContent });
+      this.closeModal();
+      const ch = State.channels.find(c => c.id === State.currentChannelId);
+      if (ch) updatePinned(ch.name);
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  async removePinnedMessage() {
+    if (!_pinnedMsgId) return;
+    try {
+      await API.del(`/api/messages/${_pinnedMsgId}`);
+      const ch = State.channels.find(c => c.id === State.currentChannelId);
+      if (ch) updatePinned(ch.name);
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  // ---- Spawn agent modal ----
+  openSpawnModal() {
+    this.showModal('Add Agent',
+      `<div class="tabs">
+         <div class="tab active" onclick="switchTab('claude')">Claude</div>
+         <div class="tab" onclick="switchTab('ollama')">Local LLM (Ollama)</div>
+         <div class="tab" onclick="switchTab('custom')">Custom</div>
+       </div>
+       <div id="spawn-tab-claude">
+         <div class="form-row">
+           <div class="form-group"><label>Model</label>
+             <select id="spawn-model">
+               <option value="claude-haiku-4-5-20251001" selected>Haiku 4.5 (default)</option>
+               <option value="claude-sonnet-4-6">Sonnet 4.6</option>
+               <option value="claude-opus-4-6">Opus 4.6 (deep reasoning)</option>
+             </select>
+           </div>
+           <div class="form-group"><label>Role</label>
+             <select id="spawn-role">${State.agents.length === 0 ? '<option>developer</option>' : ''}</select>
+           </div>
+         </div>
+         <div class="form-row">
+           <div class="form-group"><label>Channel</label>
+             <select id="spawn-channel">${State.channels.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')}</select>
+           </div>
+           <div class="form-group"><label>Interval (sec)</label>
+             <input id="spawn-interval" type="number" value="5" min="1" max="60" />
+           </div>
+         </div>
+       </div>
+       <div id="spawn-tab-ollama" style="display:none">
+         <div class="form-row">
+           <div class="form-group"><label>Ollama URL</label>
+             <input id="spawn-ollama-url" value="http://localhost:11434" />
+           </div>
+           <div class="form-group"><label>Model</label>
+             <input id="spawn-ollama-model" placeholder="qwen3:14b" />
+           </div>
+         </div>
+         <div class="ollama-status">
+           <div class="ollama-dot" id="ollama-status-dot"></div>
+           <span id="ollama-status-text">Not checked</span>
+           <button class="btn" style="margin-left:8px;padding:2px 8px" onclick="App.checkOllama()">Check</button>
+         </div>
+         <div class="form-row" style="margin-top:12px">
+           <div class="form-group"><label>Role</label><select id="spawn-ollama-role"></select></div>
+           <div class="form-group"><label>Channel</label>
+             <select id="spawn-ollama-channel">${State.channels.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')}</select>
+           </div>
+         </div>
+         <div class="form-group"><label>Interval (sec)</label><input id="spawn-ollama-interval" type="number" value="5" min="1" /></div>
+       </div>
+       <div id="spawn-tab-custom" style="display:none">
+         <div class="form-group">
+           <label>Command</label>
+           <textarea id="spawn-custom-cmd" placeholder="python my_agent.py --base-url http://localhost:9001 ..." rows="3"></textarea>
+         </div>
+       </div>
+       <div class="modal-footer">
+         <button class="btn" onclick="App.closeModal()">Cancel</button>
+         <button class="btn btn-primary" onclick="App.spawnAgent()">Spawn Agent</button>
+       </div>`,
+    );
+    // Populate role dropdowns
+    API.get('/api/roles').then(roles => {
+      ['spawn-role','spawn-ollama-role'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = roles.map(r => `<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');
+      });
+    }).catch(() => {});
+  },
+
+  _spawnTab: 'claude',
+
+  async checkOllama() {
+    const url = document.getElementById('spawn-ollama-url')?.value || 'http://localhost:11434';
+    const dot = document.getElementById('ollama-status-dot');
+    const txt = document.getElementById('ollama-status-text');
+    try {
+      const r = await fetch(`${url}/api/tags`);
+      if (r.ok) { dot.className='ollama-dot online'; txt.textContent='Ollama online'; }
+      else { dot.className='ollama-dot offline'; txt.textContent='Error: ' + r.status; }
+    } catch { dot.className='ollama-dot offline'; txt.textContent='Cannot connect'; }
+  },
+
+  async spawnAgent() {
+    const tab = this._spawnTab || 'claude';
+    let body = { type: tab };
+    if (tab === 'claude') {
+      body.model = document.getElementById('spawn-model')?.value || 'claude-haiku-4-5-20251001';
+      body.role  = document.getElementById('spawn-role')?.value || 'developer';
+      body.channel  = document.getElementById('spawn-channel')?.value || 'general';
+      body.interval = parseInt(document.getElementById('spawn-interval')?.value || '5');
+    } else if (tab === 'ollama') {
+      body.model     = document.getElementById('spawn-ollama-model')?.value || 'qwen3:14b';
+      body.ollama_url= document.getElementById('spawn-ollama-url')?.value || 'http://localhost:11434';
+      body.role      = document.getElementById('spawn-ollama-role')?.value || 'developer';
+      body.channel   = document.getElementById('spawn-ollama-channel')?.value || 'general';
+      body.interval  = parseInt(document.getElementById('spawn-ollama-interval')?.value || '5');
+    } else {
+      body.command = document.getElementById('spawn-custom-cmd')?.value || '';
+    }
+    try {
+      const agent = await API.post('/api/agents/spawn', body);
+      this.closeModal();
+      showToast(`Agent ${agent.display_name} spawned`);
+      renderAgentsPage();
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  async killAgent(name) {
+    if (!confirm(`Delete agent ${name}?`)) return;
+    try {
+      await API.del(`/api/agents/${encodeURIComponent(name)}/kill`).catch(() => {});
+      await API.del(`/api/agents/${encodeURIComponent(name)}`);
+      showToast('Agent deleted');
+      renderAgentsPage();
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  async openLogsModal(name) {
+    this.showModal(`Logs — ${name}`,
+      `<div style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:8px">
+         <button class="btn" id="agent-log-copy" onclick="App._copyLogs()">Copy</button>
+         <button class="btn" onclick="App._refreshLogs('${esc(name)}')">↻ Refresh</button>
+       </div>
+       <pre id="agent-log-output" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-size:11px;line-height:1.5;max-height:400px;overflow-y:auto;white-space:pre-wrap;word-break:break-all">Loading…</pre>
+       <div class="modal-footer">
+         <button class="btn" onclick="App.closeModal()">Close</button>
+       </div>`,
+    );
+    this._refreshLogs(name);
+  },
+
+  _copyLogs() {
+    const el = document.getElementById('agent-log-output');
+    const btn = document.getElementById('agent-log-copy');
+    if (!el || !btn) return;
+    copyText(el.textContent, btn);
+  },
+
+  async _refreshLogs(name) {
+    const el = document.getElementById('agent-log-output');
+    if (!el) return;
+    try {
+      const text = await fetch(`/api/agents/${encodeURIComponent(name)}/logs?tail=200`)
+        .then(r => r.text());
+      el.textContent = text || '(empty)';
+      el.scrollTop = el.scrollHeight;
+    } catch (e) {
+      el.textContent = `Error fetching logs: ${e.message}`;
+    }
+  },
+
+  openReassignModal(agentName, currentRole) {
+    this.showModal(`Reassign ${agentName}`,
+      `<div class="form-group"><label>New Role</label>
+         <select id="reassign-role"></select>
+       </div>
+       <div class="modal-footer">
+         <button class="btn" onclick="App.closeModal()">Cancel</button>
+         <button class="btn btn-primary" onclick="App.reassignAgent('${esc(agentName)}')">Save</button>
+       </div>`,
+    );
+    API.get('/api/roles').then(roles => {
+      const el = document.getElementById('reassign-role');
+      if (el) el.innerHTML = roles.map(r =>
+        `<option value="${esc(r.name)}" ${r.name===currentRole?'selected':''}>${esc(r.name)}</option>`
+      ).join('');
+    }).catch(() => {});
+  },
+
+  async reassignAgent(name) {
+    const role = document.getElementById('reassign-role')?.value;
+    if (!role) return;
+    try {
+      await API.patch(`/api/agents/${encodeURIComponent(name)}`, { role });
+      this.closeModal();
+      showToast('Role updated');
+      renderAgentsPage();
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  openChannelPicker(agentName, currentChannel, td) {
+    const channels = State.channels;
+    if (!channels || channels.length === 0) return;
+    const origHTML = td.innerHTML;
+    const select = document.createElement('select');
+    select.className = 'inline-channel-select';
+    select.innerHTML = channels.map(ch =>
+      `<option value="${esc(ch.name)}" ${ch.name === currentChannel ? 'selected' : ''}>${esc('#' + ch.name)}</option>`
+    ).join('');
+    td.innerHTML = '';
+    td.appendChild(select);
+    select.focus();
+    let saved = false;
+    select.onchange = async () => {
+      saved = true;
+      const newChannel = select.value;
+      select.disabled = true;
+      if (newChannel !== currentChannel) {
+        try {
+          await API.patch(`/api/agents/${encodeURIComponent(agentName)}`, { channel: newChannel });
+          showToast(`Moved to #${newChannel}`);
+          renderAgentsPage();
+        } catch (e) {
+          showToast(e.message, false);
+          td.innerHTML = origHTML;
+        }
+      } else {
+        td.innerHTML = origHTML;
+      }
+    };
+    select.onblur = () => { if (!saved) td.innerHTML = origHTML; };
+  },
+
+  // ---- Role modals ----
+  openNewRoleModal() {
+    this.showModal('New Role',
+      `<div class="form-group"><label>Name</label><input id="role-name" placeholder="e.g. researcher" autofocus /></div>
+       <div class="form-group"><label>Description</label><input id="role-desc" placeholder="What this role does" /></div>
+       <div class="form-group"><label>Rules (one per line)</label><textarea id="role-rules" rows="5" placeholder="Do X\nDo Y\nDo not Z"></textarea></div>
+       <div class="modal-footer">
+         <button class="btn" onclick="App.closeModal()">Cancel</button>
+         <button class="btn btn-primary" onclick="App.createRole()">Create</button>
+       </div>`,
+    );
+    setTimeout(() => document.getElementById('role-name')?.focus(), 50);
+  },
+
+  async createRole() {
+    const name = document.getElementById('role-name')?.value.trim();
+    const desc = document.getElementById('role-desc')?.value.trim();
+    const rules = (document.getElementById('role-rules')?.value||'').split('\n').filter(Boolean);
+    if (!name) return;
+    try {
+      await API.post('/api/roles', { name, description: desc, rules });
+      this.closeModal();
+      showToast('Role created');
+      renderRolesPage();
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  openEditRoleModal(name) {
+    const r = (State.roles || []).find(x => x.name === name);
+    if (!r) { showToast('Role not found', false); return; }
+    this.showModal(`Edit Role — ${r.name}`,
+      `<div class="form-group"><label>Description</label><input id="edit-role-desc" value="${esc(r.description)}" /></div>
+       <div class="form-group"><label>Rules (one per line)</label>
+         <textarea id="edit-role-rules" rows="6">${r.rules.map(esc).join('\n')}</textarea>
+       </div>
+       <div class="modal-footer">
+         <button class="btn" onclick="App.closeModal()">Cancel</button>
+         <button class="btn btn-primary" onclick="App.updateRole('${esc(r.name)}')">Save</button>
+       </div>`,
+    );
+  },
+
+  async updateRole(name) {
+    const desc  = document.getElementById('edit-role-desc')?.value.trim();
+    const rules = (document.getElementById('edit-role-rules')?.value||'').split('\n').filter(Boolean);
+    try {
+      await API.put(`/api/roles/${encodeURIComponent(name)}`, { description: desc, rules });
+      this.closeModal();
+      showToast('Role updated');
+      renderRolesPage();
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  async deleteRole(name) {
+    if (!confirm(`Delete role "${name}"?`)) return;
+    try {
+      await API.del(`/api/roles/${encodeURIComponent(name)}`);
+      showToast('Role deleted');
+      renderRolesPage();
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  // ---- Task modals ----
+  openNewTaskModal() {
+    this.showModal('New Task',
+      `<div class="form-group"><label>Title</label><input id="task-title" autofocus placeholder="Task title" /></div>
+       <div class="form-row">
+         <div class="form-group"><label>Status</label>
+           <select id="task-new-status">
+             <option value="todo">To Do</option><option value="in-progress">In Progress</option>
+             <option value="blocked">Blocked</option><option value="done">Done</option>
+           </select>
+         </div>
+         <div class="form-group"><label>Channel</label>
+           <select id="task-new-channel">${State.channels.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')}</select>
+         </div>
+       </div>
+       <div class="modal-footer">
+         <button class="btn" onclick="App.closeModal()">Cancel</button>
+         <button class="btn btn-primary" onclick="App.createTask()">Create</button>
+       </div>`,
+    );
+    setTimeout(() => document.getElementById('task-title')?.focus(), 50);
+  },
+
+  async createTask() {
+    const title   = document.getElementById('task-title')?.value.trim();
+    const status  = document.getElementById('task-new-status')?.value || 'todo';
+    const channel = document.getElementById('task-new-channel')?.value || 'general';
+    if (!title) return;
+    try {
+      const t = await API.post('/api/tasks', { title, status, channel });
+      this.closeModal();
+      Router.navigate(`/tasks/${t.id}`);
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  async saveTask(taskId) {
+    const desc   = document.getElementById('task-desc')?.value;
+    const status = document.getElementById('task-status')?.value;
+    const channel= document.getElementById('task-channel')?.value;
+    try {
+      await API.patch(`/api/tasks/${taskId}`, { description: desc, status, channel });
+      showToast('Task saved');
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  async deleteTask(taskId) {
+    if (!confirm('Delete this task?')) return;
+    try {
+      await API.del(`/api/tasks/${taskId}`);
+      Router.navigate('/tasks');
+    } catch (e) { showToast(e.message, false); }
+  },
+};
+
+// ============================================================
+// RIGHT PANEL — Notes + Tasks
+// ============================================================
+function switchRPanel(name, btn) {
+  document.querySelectorAll('.rpanel-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('rpanel-notes').style.display = name === 'notes' ? 'flex' : 'none';
+  document.getElementById('rpanel-tasks').style.display = name === 'tasks' ? 'flex' : 'none';
+  if (name === 'tasks') RPanel.loadTasks();
+}
+
+const Notes = {
+  async load(channel) {
+    const list = document.getElementById('notes-list');
+    if (!list) return;
+    try {
+      const notes = await API.get(`/api/notes?channel=${encodeURIComponent(channel)}`);
+      if (!notes.length) {
+        list.innerHTML = '<div style="color:var(--muted);padding:16px;font-size:12px;text-align:center">No notes yet.<br><span style="opacity:.6">Notes are injected into every agent read.</span></div>';
+        return;
+      }
+      list.innerHTML = notes.map(n => `
+        <div class="note-card" id="note-${n.id}">
+          <div class="note-text">${esc(n.content)}</div>
+          <div class="note-card-footer">
+            <button class="btn" style="font-size:11px;padding:2px 8px" onclick="Notes.startEdit(${n.id},'${esc(channel)}')">Edit</button>
+            <button class="btn btn-danger" style="font-size:11px;padding:2px 8px" onclick="Notes.del(${n.id},'${esc(channel)}')">Delete</button>
+          </div>
+        </div>`).join('');
+    } catch (e) {
+      if (list) list.innerHTML = `<div style="color:var(--danger);padding:8px;font-size:12px">${esc(e.message)}</div>`;
+    }
+  },
+
+  async add(channel) {
+    const input = document.getElementById('note-input');
+    const content = input?.value.trim();
+    if (!content) return;
+    try {
+      await API.post('/api/notes', { channel, content });
+      input.value = '';
+      await Notes.load(channel);
+    } catch (e) { showToast(e.message, false); }
+  },
+
+  startEdit(id, channel) {
+    const card = document.getElementById(`note-${id}`);
+    if (!card) return;
+    const current = card.querySelector('.note-text')?.textContent || '';
+    card.innerHTML = `
+      <textarea style="width:100%;background:var(--bg);border:1px solid var(--accent);border-radius:4px;color:var(--text);padding:6px;font:inherit;font-size:12px;resize:none;outline:none;height:80px">${esc(current)}</textarea>
+      <div class="note-card-footer" style="margin-top:5px">
+        <button class="btn" style="font-size:11px;padding:2px 8px" onclick="Notes.load('${esc(channel)}')">Cancel</button>
+        <button class="btn btn-primary" style="font-size:11px;padding:2px 8px" onclick="Notes.saveEdit(${id},'${esc(channel)}',this)">Save</button>
+      </div>`;
+    card.querySelector('textarea')?.focus();
+  },
+
+  async saveEdit(id, channel, btn) {
+    const card = document.getElementById(`note-${id}`);
+    const content = card?.querySelector('textarea')?.value.trim();
+    if (!content) return;
+    btn.disabled = true;
+    try {
+      await API.patch(`/api/notes/${id}`, { content });
+      await Notes.load(channel);
+    } catch (e) { showToast(e.message, false); btn.disabled = false; }
+  },
+
+  async del(id, channel) {
+    try {
+      await API.del(`/api/notes/${id}`);
+      await Notes.load(channel);
+    } catch (e) { showToast(e.message, false); }
+  },
+};
+
+const RPanel = {
+  _channel: null,
+
+  init(channel) {
+    this._channel = channel;
+    Notes.load(channel);
+  },
+
+  async loadTasks() {
+    const list = document.getElementById('rpanel-tasks-list');
+    if (!list || !this._channel) return;
+    try {
+      const tasks = await API.get(`/api/tasks?channel=${encodeURIComponent(this._channel)}`);
+      if (!tasks.length) {
+        list.innerHTML = '<div style="color:var(--muted);padding:16px;font-size:12px;text-align:center">No tasks for this channel.</div>';
+        return;
+      }
+      const statusColors = { todo: 'var(--muted)', in_progress: 'var(--accent)', done: '#56d364' };
+      list.innerHTML = tasks.map(t => `
+        <div class="rpanel-task-item" onclick="Router.navigate('/tasks/${t.id}')">
+          <div class="rpanel-task-title">${esc(t.title)}</div>
+          <div class="rpanel-task-status" style="color:${statusColors[t.status]||'var(--muted)'}">● ${esc(t.status)}</div>
+        </div>`).join('');
+    } catch (e) {
+      if (list) list.innerHTML = `<div style="color:var(--danger);padding:8px;font-size:12px">${esc(e.message)}</div>`;
+    }
+  },
+};
+
+// Tab switcher for spawn modal
+function switchTab(name) {
+  App._spawnTab = name;
+  ['claude','ollama','custom'].forEach(t => {
+    const tab = document.querySelector(`.tab:nth-child(${['claude','ollama','custom'].indexOf(t)+1})`);
+    if (tab) tab.classList.toggle('active', t === name);
+    const panel = document.getElementById(`spawn-tab-${t}`);
+    if (panel) panel.style.display = t === name ? '' : 'none';
+  });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+  try {
+    State.channels = await API.get('/api/channels');
+    renderSidebar();
+    Router._dispatch(window.location.pathname);
+  } catch {
+    document.getElementById('main').innerHTML =
+      `<div style="padding:40px;color:var(--danger)">Cannot connect to server. Make sure it is running: <code>python main.py ui</code></div>`;
+  }
+}
+
+init();
 </script>
 </body>
 </html>

@@ -1,9 +1,9 @@
 """
 roles.py — Role loading, assignment, and system header generation.
 
-Roles are defined in roles.json. This module picks the best role for a new
-agent and builds the sticky system header that every agent receives on every
-read call.
+Roles are defined in the database (seeded from roles.json on first run).
+This module picks the best role for a new agent and builds the sticky
+system header that every agent receives on every read call.
 """
 
 import json
@@ -22,27 +22,19 @@ def assign_role(roles: list[dict], active_agents: list[dict], preferred: Optiona
     Pick the best role for a joining agent.
 
     Strategy:
-    1. If `preferred` is given and under max_active, use it.
-    2. Otherwise pick the role with fewest current agents that is still under max_active.
-    3. If all roles are at max, pick the globally least-populated role.
+    1. If `preferred` is given, use it.
+    2. Otherwise pick the role with the fewest current active agents.
     """
     counts: dict[str, int] = {}
     for agent in active_agents:
         counts[agent["role"]] = counts.get(agent["role"], 0) + 1
 
-    # Honour preference if slot is available
     if preferred:
         match = next((r for r in roles if r["name"] == preferred), None)
-        if match and counts.get(match["name"], 0) < match.get("max_active", 99):
+        if match:
             return match
 
-    # Roles that still have capacity
-    available = [r for r in roles if counts.get(r["name"], 0) < r.get("max_active", 99)]
-
-    # Fall back to all roles if every slot is full
-    pool = available if available else roles
-
-    return min(pool, key=lambda r: counts.get(r["name"], 0))
+    return min(roles, key=lambda r: counts.get(r["name"], 0))
 
 
 def build_system_header(role: dict, character_description: Optional[str] = None) -> str:
@@ -81,6 +73,8 @@ UNIVERSAL AGENT RULES (apply to every role):
   - APPEND ONLY — never edit or reference editing previous messages
   - Do not repeat a point unless adding genuinely new information
   - Keep responses concise and clearly on-role
+  - HUMAN PRIORITY — if the most recent message from sender='user' has not been
+    explicitly addressed, address it BEFORE responding to other agents
 
 ══════════════════════════════════════════════════════════════
 {character_block}"""
