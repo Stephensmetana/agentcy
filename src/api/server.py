@@ -113,7 +113,7 @@ def create_ui_app(db_path: str, roles_path: str) -> FastAPI:
     db = ChatDB(db_path)
     room = ChatRoom(db, roles_path)
 
-    ui_file = Path(__file__).parent.parent.parent / "ui" / "index.html"
+    ui_file = Path(__file__).parent.parent.parent / "ui" / "Agentcy.html"
 
     def _serve_ui():
         if not ui_file.exists():
@@ -614,6 +614,28 @@ def create_ui_app(db_path: str, roles_path: str) -> FastAPI:
         return {"ok": True}
 
     # -----------------------------------------------------------------------
+    # UI asset files (JSX sources loaded by Babel in the browser)
+    # Must be declared before the SPA catch-all routes.
+    # -----------------------------------------------------------------------
+
+    _ui_dir = ui_file.parent
+
+    @app.get("/agentcy-shared.jsx")
+    def serve_jsx_shared():
+        f = _ui_dir / "agentcy-shared.jsx"
+        return Response(f.read_text(encoding="utf-8"), media_type="application/javascript")
+
+    @app.get("/agentcy-chat.jsx")
+    def serve_jsx_chat():
+        f = _ui_dir / "agentcy-chat.jsx"
+        return Response(f.read_text(encoding="utf-8"), media_type="application/javascript")
+
+    @app.get("/agentcy-tasks-settings.jsx")
+    def serve_jsx_tasks():
+        f = _ui_dir / "agentcy-tasks-settings.jsx"
+        return Response(f.read_text(encoding="utf-8"), media_type="application/javascript")
+
+    # -----------------------------------------------------------------------
     # SPA: serve index.html for all browser routes
     # -----------------------------------------------------------------------
 
@@ -639,6 +661,10 @@ def create_ui_app(db_path: str, roles_path: str) -> FastAPI:
 
     @app.get("/tasks/{task_id}", response_class=HTMLResponse)
     def serve_task_detail(task_id: str):  # noqa: ARG001
+        return _serve_ui()
+
+    @app.get("/logs", response_class=HTMLResponse)
+    def serve_logs():
         return _serve_ui()
 
     return app
